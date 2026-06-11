@@ -1,0 +1,40 @@
+@keyframes shake {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(50deg); }
+    50% { transform: rotate(-50deg); }
+    75% { transform: rotate(50deg); }
+  }
+  
+  .shake {
+    animation: shake 0.5s;
+  }
+
+  /* Mobile responsive styles */
+  @media (max-width: 768px) {
+    .mobile-sidebar-drawer .ant-drawer-body {
+      padding: 0;
+    }
+    
+    .mobile-sidebar-drawer .ant-drawer-header {
+      background: #1f2937;
+      border-bottom: 1px solid #374151;
+    }
+    
+    .mobile-sidebar-drawer .ant-drawer-header-title {
+      color: white;
+    }
+    
+    .mobile-sidebar-drawer .ant-drawer-close {
+      color: white;
+    }
+    
+    /* Hide default close button */
+    .mobile-sidebar-drawer .ant-drawer-close {
+      display: none !important;
+    }
+    
+    /* Hide default header when closable is false */
+    .mobile-sidebar-drawer .ant-drawer-header {
+      display: none !important;
+    }
+  }

@@ -1,0 +1,115 @@
+/* eslint-disable react/prop-types */
+import { createContext, useState, useEffect, useCallback, useContext } from "react";
+import Cookies from "js-cookie";
+import { jwtDecode } from "jwt-decode";
+import { getDocumentsByUserAndType } from "../api/documentApi";
+import {  getStaffPendingReplyCount } from "../api/repliedDocApi";
+
+const NotificationContext = createContext();
+
+const getUserInfo = () => {
+  const token = Cookies.get("accessToken");
+  if (!token) return { role: null, userId: null };
+  try {
+    const decodedToken = jwtDecode(token);
+    return { role: decodedToken.role, userId: decodedToken.userId };
+  } catch (error) {
+    console.error("Error decoding token in NotificationContext:", error);
+    return { role: null, userId: null };
+  }
+};
+
+export const NotificationProvider = ({ children }) => {
+  const [unreadDocCount, setUnreadDocCount] = useState(0);
+  const [pendingReplyCount, setPendingReplyCount] = useState(0);
+  const [myPendingReplyCount, setMyPendingReplyCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [userInfo, setUserInfo] = useState({ role: null, userId: null });
+
+  useEffect(() => {
+    setUserInfo(getUserInfo());
+  }, []);
+
+  const fetchNotificationCounts = useCallback(async () => {
+    const { role, userId } = userInfo;
+
+    if (!userId || !role) {
+      setUnreadDocCount(0);
+      setPendingReplyCount(0);
+      setMyPendingReplyCount(0);
+      return;
+    }
+
+    setIsLoading(true);
+    let fetchedUnreadCount = 0;
+    let fetchedPendingCount = 0;
+    let fetchedMyPendingCount = 0;
+
+    try {
+    
+        // Đếm văn bản chưa đọc
+        const receivedDocsResponse = await getDocumentsByUserAndType(userId, "received", 1, 9999);
+        if (receivedDocsResponse?.success) {
+          fetchedUnreadCount = receivedDocsResponse.data.filter(doc =>
+            doc.assignedToUsers?.some(assignee =>
+              (typeof assignee.userId === "object" ? assignee.userId?._id : assignee.userId) === userId && !assignee.isRead
+            )
+          ).length;
+        }
+
+        // Đếm pending + rejected cho staff
+        fetchedMyPendingCount = await getStaffPendingReplyCount(userId);
+    
+      
+
+      setUnreadDocCount(fetchedUnreadCount);
+      setPendingReplyCount(fetchedPendingCount);
+      setMyPendingReplyCount(fetchedMyPendingCount);
+    } catch (error) {
+      console.error("Error fetching notification counts:", error);
+      setUnreadDocCount(0);
+      setPendingReplyCount(0);
+      setMyPendingReplyCount(0);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userInfo]);
+
+  useEffect(() => {
+    if (userInfo.userId && userInfo.role) {
+      fetchNotificationCounts(); // Gọi lần đầu
+  
+      // Polling mỗi 30 giây
+      const interval = setInterval(() => {
+        fetchNotificationCounts();
+      }, 30000);
+  
+      // Cleanup interval
+      return () => clearInterval(interval);
+    } else {
+      setUnreadDocCount(0);
+      setPendingReplyCount(0);
+      setMyPendingReplyCount(0);
+    }
+  }, [userInfo, fetchNotificationCounts]);
+
+  const contextValue = {
+    unreadDocCount,
+    pendingReplyCount,
+    myPendingReplyCount,
+    isLoadingCounts: isLoading,
+    refetchNotificationCounts: fetchNotificationCounts,
+    userRole: userInfo.role,
+    userId: userInfo.userId,
+  };
+
+  return <NotificationContext.Provider value={contextValue}>{children}</NotificationContext.Provider>;
+};
+
+export const useNotificationContext = () => {
+  const context = useContext(NotificationContext);
+  if (context === undefined) {
+    throw new Error("useNotificationContext must be used within a NotificationProvider");
+  }
+  return context;
+};

@@ -1,0 +1,135 @@
+.login-container {
+    background: url('./assets/login-bg.png') no-repeat center center;
+    background-size: 100% 100%;
+    width: 100%;
+    min-height: 100vh;/* Đảm bảo tối thiểu bằng chiều cao màn hình */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative; 
+    background-attachment: fixed;
+}
+
+
+.login-form-wrapper {   
+    border-radius: 12px;
+    width: 100%;
+    max-width: 500px;
+    position: absolute;
+    right: 13%; 
+    z-index: 1000;
+}
+@media (max-width: 1644px) {
+
+    .login-form-wrapper {
+        border-radius: 12px;
+        width: 100%;
+        max-width: 500px;
+        position: absolute;
+    }
+}
+@media (max-width: 1000px) {
+    .login-container {
+        background: none; 
+        background-color: #fff; 
+    }
+    .login-form-wrapper {
+        position: static; 
+        margin: 0 auto;
+        background-color: rgba(255, 255, 255, 0.9); 
+        padding: 20px; 
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+    }
+}
+
+@media (max-width: 768px) {
+    .login-container {
+        padding-top: 50px;
+    }
+    .login-form-wrapper {
+        max-width: 90%;
+        background-color: rgba(255, 255, 255, 0.9); 
+        padding: 20px; 
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+    }
+}
+/* --- Styles cho button Tawk.to --- */
+/* --- Styles cho button Tawk.to --- */
+
+/* Ghi đè style mặc định của Ant Design */
+:where(.css-dev-only-do-not-override-1m63z2v).ant-float-btn-default .ant-float-btn-body {
+    background-color: transparent !important; /* Loại bỏ màu trắng mặc định */
+}
+
+/* Ghi đè màu chữ mặc định của Ant Design */
+:where(.css-dev-only-do-not-override-1m63z2v).ant-float-btn-default .ant-float-btn-description {
+    color: unset !important; /* Loại bỏ màu chữ mặc định */
+}
+
+/* --- Styles cho button Tawk.to --- */
+
+.ant-float-btn.tawk-button .ant-float-btn-body 
+.ant-float-btn.zalo-button .ant-float-btn-body {
+    background-color: #ffffff !important;
+}
+
+.ant-float-btn.tawk-button .ant-float-btn-icon,
+.ant-float-btn.tawk-button .ant-float-btn-description
+.ant-float-btn.zalo-button .ant-float-btn-icon,
+.ant-float-btn.zalo-button .ant-float-btn-description {
+    color: #003b63 !important;
+}
+
+.ant-float-btn.tawk-button-open .ant-float-btn-body
+.ant-float-btn.zalo-button-open .ant-float-btn-body {
+    background-color: #2563EB !important; 
+}
+
+.ant-float-btn.tawk-button-open .ant-float-btn-icon
+
+.ant-float-btn.zalo-button-open .ant-float-btn-icon {
+    color: white !important; 
+}
+.ant-float-btn.tawk-button-open .ant-float-btn-description
+
+.ant-float-btn.zalo-button-open .ant-float-btn-description {
+    color: #003b63 !important; 
+}
+
+.ant-float-btn.tawk-button-open:hover .ant-float-btn-body,
+.ant-float-btn.tawk-button-open:focus .ant-float-btn-body,
+.ant-float-btn.tawk-button-open:active .ant-float-btn-body ,
+
+.ant-float-btn.zalo-button-open:hover .ant-float-btn-body,
+.ant-float-btn.zalo-button-open:focus .ant-float-btn-body,
+.ant-float-btn.zalo-button-open:active .ant-float-btn-body{
+    background-color: #2563EB !important;
+}
+
+.ant-float-btn.tawk-button-open:hover .ant-float-btn-icon,
+.ant-float-btn.tawk-button-open:focus .ant-float-btn-icon,
+.ant-float-btn.tawk-button-open:active .ant-float-btn-icon ,
+
+.ant-float-btn.zalo-button-open:hover .ant-float-btn-icon,
+.ant-float-btn.zalo-button-open:focus .ant-float-btn-icon,
+.ant-float-btn.zalo-button-open:active .ant-float-btn-icon {
+    color: white !important; 
+}
+
+.ant-float-btn.tawk-button-open:hover .ant-float-btn-description,
+.ant-float-btn.tawk-button-open:focus .ant-float-btn-description,
+.ant-float-btn.tawk-button-open:active .ant-float-btn-description,
+
+.ant-float-btn.zalo-button-open:hover .ant-float-btn-description,
+.ant-float-btn.zalo-button-open:focus .ant-float-btn-description,
+.ant-float-btn.zalo-button-open:active .ant-float-btn-descriptionn {
+    color: white !important; 
+}
+.ant-float-btn:not(.tawk-button-open):not(.zalo-button-open):hover .ant-float-btn-body {
+    background-color: #f0f0f0 !important; 
+}
+
+.ant-float-btn:not(.tawk-button-open):not(.zalo-button-open):hover .ant-float-btn-icon,
+.ant-float-btn:not(.tawk-button-open):not(.zalo-button-open):hover .ant-float-btn-description {
+    color: #003b63 !important; 
+}
