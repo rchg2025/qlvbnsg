@@ -60,10 +60,14 @@ app.get("/test", (req, res) => {
 (async () => {
     try {
       await connection();
-      app.listen(port, () => {
-        console.log(`Ứng dụng mẫu đang nghe trên cổng http://localhost:${port}`);
-      });
+      if (process.env.NODE_ENV !== 'production') {
+        app.listen(port, () => {
+          console.log(`Ứng dụng mẫu đang nghe trên cổng http://localhost:${port}`);
+        });
+      }
     } catch (error) {
       console.log(">>> lỗi kết nối đến db", error);
     }
-  })();
+})();
+
+module.exports = app;
