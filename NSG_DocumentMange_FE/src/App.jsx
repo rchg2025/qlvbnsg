@@ -33,6 +33,7 @@ import UserListPage from './Page/CreateUser/UserListPage';
 import UnitList from './Page/Units/UnitList';
 import Report from './Page/Report/Report.jsx';
 import Statistics from './Page/Statistics/statistics.jsx';
+import SchedulePage from './Page/Schedule/SchedulePage.jsx';
 
 function App() {
   const ZaloOAID = import.meta.env.VITE_ZALO_OAID;
@@ -311,6 +312,7 @@ const [isMobile, setIsMobile] = useState(false);
             <Route path="Units" element={<UnitList />} />
             <Route path="Report" element={<Report />} />
             <Route path="Statistics" element={<Statistics />} />
+            <Route path="schedule" element={<SchedulePage />} />
           </Route>
         </Route>
       </Routes>

@@ -162,6 +162,7 @@ const Sidebar = ({ mobileOpen, onMobileClose, onMenuItemClick }) => {
 
   const menuItems = [
     { key: "/", icon: <DashboardOutlined />, label: <Link to="/">Dashboard</Link> },
+    { key: "/schedule", icon: <ProjectOutlined />, label: <Link to="/schedule">Lịch công tác</Link> },
     {
       key: "/documents",
       icon: <FileTextOutlined />,
