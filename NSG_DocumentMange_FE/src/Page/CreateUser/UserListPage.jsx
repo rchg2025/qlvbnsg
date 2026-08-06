@@ -9,6 +9,7 @@ import { jwtDecode } from "jwt-decode";
 import { Tooltip } from "antd";
 import { EditOutlined, UserDeleteOutlined, UserAddOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined } from "@ant-design/icons";
 import FilterFormWrapper from "../../components/FilterFormWrapper.jsx";
+import { removeVietnameseTones } from "../../utils/stringUtils";
 
 // const { Title } = Typography;
 
@@ -28,7 +29,7 @@ const UserListPage = () => {
   const [departments, setDepartments] = useState([]);
   const [pagination, setPagination] = useState({
     current: 1,
-    pageSize: 10,
+    pageSize: 20,
     pageSizeOptions: ['10', '20', '50', '100'],
   });
   
@@ -259,20 +260,23 @@ const UserListPage = () => {
     let filtered = [...allUsers];
 
     if (filters.name) {
+      const searchName = removeVietnameseTones(filters.name.toLowerCase());
       filtered = filtered.filter((user) =>
-        user.name?.toLowerCase().includes(filters.name.toLowerCase())
+        removeVietnameseTones(user.name?.toLowerCase() || "").includes(searchName)
       );
     }
 
     if (filters.email) {
+      const searchEmail = removeVietnameseTones(filters.email.toLowerCase());
       filtered = filtered.filter((user) =>
-        user.email?.toLowerCase().includes(filters.email.toLowerCase())
+        removeVietnameseTones(user.email?.toLowerCase() || "").includes(searchEmail)
       );
     }
 
     if (filters.mobile) {
+      const searchMobile = removeVietnameseTones(filters.mobile);
       filtered = filtered.filter((user) =>
-        user.mobile?.includes(filters.mobile)
+        removeVietnameseTones(user.mobile || "").includes(searchMobile)
       );
     }
 
@@ -322,6 +326,13 @@ const UserListPage = () => {
 
   // Cấu hình bảng
   const columns = [
+    {
+      title: "STT",
+      key: "stt",
+      width: 60,
+      align: "center",
+      render: (text, record, index) => (pagination.current - 1) * pagination.pageSize + index + 1,
+    },
     { title: "Họ tên", dataIndex: "name", key: "name" },
     { title: "Email", dataIndex: "email", key: "email", render: (email) => email || "Chưa có" },
     { title: "Số Điện Thoại", dataIndex: "mobile", key: "mobile" },

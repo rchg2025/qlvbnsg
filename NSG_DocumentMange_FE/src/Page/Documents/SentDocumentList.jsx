@@ -16,7 +16,7 @@ import {
   InputNumber,
   Tooltip,
 } from "antd";
-import { EyeOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined } from "@ant-design/icons";
+import { EyeOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, DownloadOutlined } from "@ant-design/icons";
 import {
   getAllDocuments as getAllDocumentsApi,
   searchDocuments as searchDocumentsApi,
@@ -69,8 +69,7 @@ const SentDocumentList = () => {
   const navigate = useNavigate();
 
   const [filters, setFilters] = useState({
-    docIdentifier: "",
-    shortDescription: "",
+    keyword: "",
     recipients: [],
     deadlineRange: [null, null],
     createAtRange: [null, null],
@@ -233,11 +232,8 @@ const SentDocumentList = () => {
       };
 
       // Map frontend filters to searchDocuments API parameters
-      if (searchFilters.docIdentifier) {
-        apiParams.soKyHieu = searchFilters.docIdentifier;
-      }
-      if (searchFilters.shortDescription) {
-        apiParams.shortDescription = searchFilters.shortDescription;
+      if (searchFilters.keyword) {
+        apiParams.keyword = searchFilters.keyword;
       }
       if (searchFilters.recipients && searchFilters.recipients.length > 0) {
         apiParams.executors = searchFilters.recipients.join(",");
@@ -378,8 +374,7 @@ const SentDocumentList = () => {
 
   const handleResetFilters = () => {
     const resetFilters = {
-      docIdentifier: "",
-      shortDescription: "",
+      keyword: "",
       recipients: [],
       deadlineRange: [null, null],
       createAtRange: [null, null],
@@ -697,7 +692,7 @@ const SentDocumentList = () => {
       render: (files) =>
         files && files.length > 0 ? (
           <ul className="list-none p-0 m-0 space-y-1">
-            {files.map((file) => (
+            {files.map((file, index) => (
               <li key={file.fileId}>
                 <a
                   href={`https://drive.google.com/file/d/${file.fileId}/view?usp=sharing`}
@@ -705,7 +700,7 @@ const SentDocumentList = () => {
                   rel="noopener noreferrer"
                   className="text-blue-600 hover:underline text-sm break-all"
                 >
-                  {file.fileName}
+                  {files.length > 1 ? `${index + 1}. ` : ""}{file.fileName}
                 </a>
               </li>
             ))}
@@ -804,17 +799,10 @@ const SentDocumentList = () => {
         <FilterFormWrapper onSearch={handleSearch}>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 md:gap-4 items-end">
           <Input
-            placeholder="Số/Ký hiệu (VD: 63/KH-NSG)"
-            value={filters.docIdentifier}
-            onChange={(e) => handleFilterChange("docIdentifier", e.target.value)}
-            className="w-full rounded-md"
-            allowClear
-          />
-          <Input
-            placeholder="Trích yếu (từ khóa)"
-            value={filters.shortDescription}
-            onChange={(e) => handleFilterChange("shortDescription", e.target.value)}
-            className="w-full rounded-md"
+            placeholder="Từ khóa: Số/Ký hiệu, Trích yếu..."
+            value={filters.keyword}
+            onChange={(e) => handleFilterChange("keyword", e.target.value)}
+            className="w-full rounded-md sm:col-span-2 lg:col-span-2"
             allowClear
           />
           <Select
@@ -1087,20 +1075,70 @@ const SentDocumentList = () => {
             <Card size="small" className="border-gray-200 rounded-lg">
               <h3 className="font-semibold text-gray-700 mb-2 border-b pb-1">📎 Tệp đính kèm</h3>
               {selectedDocument.files && selectedDocument.files.length > 0 ? (
-                <ul className="list-disc pl-5 space-y-1">
-                  {selectedDocument.files.map((file) => (
-                    <li key={file.fileId}>
-                      <a
-                        href={`https://drive.google.com/file/d/${file.fileId}/view?usp=sharing`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline break-all"
-                      >
-                        {file.fileName}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
+                <Table
+                  dataSource={selectedDocument.files}
+                  pagination={false}
+                  rowKey="fileId"
+                  size="small"
+                  bordered
+                  columns={[
+                    {
+                      title: 'STT',
+                      key: 'stt',
+                      render: (text, record, index) => index + 1,
+                      width: 60,
+                      align: 'center',
+                    },
+                    {
+                      title: 'Tên tài liệu',
+                      key: 'fileName',
+                      render: (text, record) => {
+                        const rawName = record.fileName || record.name || "File";
+                        return (
+                          <a
+                            href={`https://drive.google.com/file/d/${record.fileId}/view`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            {rawName}
+                          </a>
+                        );
+                      }
+                    },
+                    {
+                      title: 'Thao tác',
+                      key: 'action',
+                      width: 150,
+                      align: 'center',
+                      render: (text, record) => {
+                        return (
+                          <div className="flex gap-2 justify-center">
+                            <Button 
+                              type="text" 
+                              icon={<EyeOutlined className="text-green-600 text-lg" />} 
+                              title="Xem file" 
+                              onClick={() => window.open(`https://drive.google.com/file/d/${record.fileId}/view`)}
+                            />
+                            <Button 
+                              type="text" 
+                              icon={<DownloadOutlined className="text-blue-500 text-lg" />} 
+                              title="Tải xuống"
+                              onClick={() => {
+                                const link = document.createElement('a');
+                                link.href = `https://drive.google.com/uc?export=download&id=${record.fileId}`;
+                                link.setAttribute('download', '');
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                            />
+                          </div>
+                        );
+                      }
+                    }
+                  ]}
+                />
               ) : (
                 <p>Không có tệp đính kèm.</p>
               )}

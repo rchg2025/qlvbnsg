@@ -31,7 +31,7 @@ const DocVariantTable = ({ data, onEdit, onDelete, loading }) => {
       title: "STT",
       dataIndex: "index",
       key: "index",
-      render: (text, record, index) => index + 1,
+      render: (text, record) => data.indexOf(record) + 1,
       width: 60,
     },
     {
@@ -93,7 +93,7 @@ const DocVariantTable = ({ data, onEdit, onDelete, loading }) => {
         columns={columns}
         dataSource={data}
         rowKey="docVariantId"
-        pagination={false}
+        pagination={{ pageSize: 20 }}
         scroll={{ x: "max-content" }}
         className="shadow-md rounded-lg border border-gray-200"
       />

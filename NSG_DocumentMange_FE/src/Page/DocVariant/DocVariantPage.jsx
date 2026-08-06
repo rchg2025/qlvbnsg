@@ -5,6 +5,8 @@ import DocVariantTable from "../../components/DocVariantTable";
 import DocVariantModal from "../../components/DocVariantModal";
 import Cookies from "js-cookie";
 import { jwtDecode } from "jwt-decode";
+import { removeVietnameseTones } from "../../utils/stringUtils";
+import { Input } from "antd";
 
 const { Option } = Select;
 
@@ -16,8 +18,14 @@ const DocVariantPage = () => {
   const [editingVariant, setEditingVariant] = useState(null);
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [currentUserRole, setCurrentUserRole] = useState("");
+  const [searchText, setSearchText] = useState("");
 
   const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
+
+  const filteredDocVariants = data.filter((variant) => {
+    const searchLower = removeVietnameseTones(searchText.toLowerCase());
+    return variant.docVariantName && removeVietnameseTones(variant.docVariantName.toLowerCase()).includes(searchLower);
+  });
 
   // Lấy role của user từ token
   useEffect(() => {
@@ -157,10 +165,16 @@ const DocVariantPage = () => {
               Thêm Mới
             </Button>
           )}
+          <Input.Search
+            placeholder="Tìm kiếm loại văn bản"
+            allowClear
+            onChange={(e) => setSearchText(e.target.value)}
+            style={{ width: 250 }}
+          />
         </div>
       </div>
       <DocVariantTable
-        data={data}
+        data={filteredDocVariants}
         onEdit={hasPermission() ? handleEdit : undefined}
         onDelete={hasDeletePermission() ? handleDelete : undefined}
         loading={loading}

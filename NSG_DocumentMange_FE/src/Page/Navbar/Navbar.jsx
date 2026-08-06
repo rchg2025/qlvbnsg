@@ -11,7 +11,7 @@ import "./bell.css";
 import PropTypes from "prop-types";
 
 const Sidebar = ({ mobileOpen, onMobileClose, onMenuItemClick }) => {
-  const { unreadDocCount, myPendingReplyCount, userRole, userId } = useNotificationContext();
+  const { unreadDocCount, myPendingReplyCount, userRole, userId, todoTaskCount } = useNotificationContext();
   const [totalPendingReplies, setTotalPendingReplies] = useState(0);
   const [bghInReviewCount, setBghInReviewCount] = useState(0);
   const [deadlineCounts, setDeadlineCounts] = useState({ soonCount: 0, dueTodayCount: 0, overdueCount: 0 });
@@ -162,7 +162,6 @@ const Sidebar = ({ mobileOpen, onMobileClose, onMenuItemClick }) => {
 
   const menuItems = [
     { key: "/", icon: <DashboardOutlined />, label: <Link to="/">Dashboard</Link> },
-    { key: "/schedule", icon: <ProjectOutlined />, label: <Link to="/schedule">Lịch công tác</Link> },
     {
       key: "/documents",
       icon: <FileTextOutlined />,
@@ -195,18 +194,33 @@ const Sidebar = ({ mobileOpen, onMobileClose, onMenuItemClick }) => {
         ),
       ],
     },
-    ...(isAdmin
+    ...(isAdmin || isStaff
       ? [
-       
         {
           key: "/report/Statistics",
           icon: <LineChartOutlined />,
           label: "Thống kê - Báo cáo",
           children: [
             { key: "/report", label: <Link to="/report">Báo cáo</Link> },
-            { key: "/Statistics", label: <Link to="/Statistics">Thống kê</Link> },
+            ...(isAdmin ? [{ key: "/Statistics", label: <Link to="/Statistics">Thống kê</Link> }] : []),
           ],
         },
+      ]
+      : []),
+    {
+      key: "/schedule-group",
+      icon: <ProjectOutlined />,
+      label: "Công việc",
+      children: [
+        createLinkItem("/schedule/all", "Tất cả công việc"),
+        createLinkItem("/schedule/create", "Tạo công việc"),
+        createLinkItem("/schedule/todo", "Chưa làm", todoTaskCount),
+        createLinkItem("/schedule/inprogress", "Đang làm"),
+        createLinkItem("/schedule/done", "Hoàn thành"),
+      ],
+    },
+    ...(isAdmin
+      ? [
         {
           key: "/MenberManager",
           icon: <AppstoreAddOutlined />,
@@ -217,6 +231,7 @@ const Sidebar = ({ mobileOpen, onMobileClose, onMenuItemClick }) => {
             { key: "/MenberManager/Listusers", label: <Link to="/Listusers">Quản lý người dùng</Link> },
             { key: "/MenberManager/DocVariantPage", label: <Link to="/DocVariantPage">Quản lý loại văn bản</Link> },
             { key: "/Units", label: <Link to="/Units">Cơ quan ban hành</Link> },
+            { key: "/ChatbotConfig", label: <Link to="/ChatbotConfig">Cấu hình AI Chatbot</Link> },
           ],
         },
       ]
@@ -231,98 +246,7 @@ const Sidebar = ({ mobileOpen, onMobileClose, onMenuItemClick }) => {
   const sidebarContent = (
     <div className="h-full bg-gray-800 text-white flex flex-col">
       <div className="flex justify-between items-center p-3 relative">
-        {/* Bell + Popover - only show on desktop */}
-        {!isMobile && (
-          <Popover
-            content={
-              <div className="text-sm space-y-2">
-                {unreadDocCount > 0 && (
-                  <p>
-                    <Link 
-                      to="/documents/ReceivedDocumentList" 
-                      className="text-black hover:text-blue-800 hover:underline"
-                      onClick={() => setShowPopover(false)}
-                    >
-                      Bạn có tổng <b>{unreadDocCount}</b> văn bản đến chưa xem.
-                    </Link>
-                  </p>
-                )}
-                {deadlineCounts.soonCount > 0 && (
-                  <p>
-                    <Link 
-                      to="/documents/ReceivedDocumentList" 
-                      className="text- hover:text-blue-800 hover:underline"
-                      onClick={() => setShowPopover(false)}
-                    >
-                      Có <b>{deadlineCounts.soonCount}</b> văn bản sắp đến hạn xử lý.
-                    </Link>
-                  </p>
-                )}
-                {deadlineCounts.dueTodayCount > 0 && (
-                  <p>
-                    <Link 
-                      to="/documents/ReceivedDocumentList" 
-                      className="text-black hover:text-blue-800 hover:underline"
-                      onClick={() => setShowPopover(false)}
-                    >
-                      Có <b>{deadlineCounts.dueTodayCount}</b> văn bản đến hạn xử lý.
-                    </Link>
-                  </p>
-                )}
-                {deadlineCounts.overdueCount > 0 && (
-                  <p>
-                    <Link 
-                      to="/documents/ReceivedDocumentList" 
-                      className="text-black hover:text-blue-800 hover:underline"
-                      onClick={() => setShowPopover(false)}
-                    >
-                      Có <b>{deadlineCounts.overdueCount}</b> văn bản quá hạn xử lý.
-                    </Link>
-                  </p>
-                )}
-                {(isAdmin ? totalPendingReplies : myPendingReplyCount) > 0 && (
-                  <p>
-                    <Link 
-                      to="/getAllRepliedDoc" 
-                      className="text-black hover:text-blue-800 hover:underline"
-                      onClick={() => setShowPopover(false)}
-                    >
-                      Bạn có <b>{isAdmin ? totalPendingReplies : myPendingReplyCount}</b> văn bản trình ký cần xử lý.
-                    </Link>
-                  </p>
-                )}
-                {isBGH && bghInReviewCount > 0 && (
-                  <p>
-                    <Link 
-                      to="/bgh-review" 
-                      className="text-black hover:text-blue-800 hover:underline"
-                      onClick={() => setShowPopover(false)}
-                    >
-                      Bạn có <b>{bghInReviewCount}</b> văn bản đang chờ BGH xét duyệt.
-                    </Link>
-                  </p>
-                )}
-              </div>
-            }
-            title="Thông báo mới"
-            className="ml-2"
-            trigger="click"
-            open={showPopover}
-            onOpenChange={(open) => {
-              setShowPopover(open);
-
-              if (open) {
-                setTimeout(() => {
-                  setShowPopover(false);
-                }, 5000 );
-              }
-            }}
-          >
-            <Badge count={totalNotifications} size="small" offset={[-5, 5]}>
-              <BellOutlined className={`text-white text-2xl cursor-pointer transition-all ${showPopover ? "shake" : ""}`} />
-            </Badge>
-          </Popover>
-        )}
+        
 
         {/* Right side - Close button for mobile, Collapse button for desktop */}
         <div className="flex items-center space-x-2">

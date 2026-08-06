@@ -3,6 +3,7 @@ import { Table, Modal, Form, Input, Button, message, Popconfirm } from "antd";
 import { getAllDepartments, createDepartment, deleteDepartment, updateDepartment, getUsersByDepartment } from "../../api/DepartmentAPI";
 import Cookies from "js-cookie";
 import { jwtDecode } from "jwt-decode";
+import { removeVietnameseTones } from "../../utils/stringUtils";
 
 const DepartmentPage = () => {
     const [departments, setDepartments] = useState([]);
@@ -14,10 +15,19 @@ const DepartmentPage = () => {
     const [selectedDepartment, setSelectedDepartment] = useState(null);
     const [users, setUsers] = useState([]);
     const [currentUserRole, setCurrentUserRole] = useState("");
+    const [searchText, setSearchText] = useState("");
     const [pagination, setPagination] = useState({
         current: 1,
-        pageSize: 10,
+        pageSize: 20,
         pageSizeOptions: ['10', '20', '50', '100'],
+    });
+
+    const filteredDepartments = departments.filter((dept) => {
+        const searchLower = removeVietnameseTones(searchText.toLowerCase());
+        return (
+            (dept.departmentCode && removeVietnameseTones(dept.departmentCode.toLowerCase()).includes(searchLower)) ||
+            (dept.departmentName && removeVietnameseTones(dept.departmentName.toLowerCase()).includes(searchLower))
+        );
     });
 
     // Lấy role của user từ token
@@ -113,6 +123,13 @@ const DepartmentPage = () => {
 
     const columns = [
         {
+            title: "STT",
+            key: "stt",
+            width: 60,
+            align: "center",
+            render: (text, record, index) => (pagination.current - 1) * pagination.pageSize + index + 1,
+        },
+        {
             title: "Mã Phòng Ban",
             dataIndex: "departmentCode",
             key: "departmentCode",
@@ -192,8 +209,8 @@ const DepartmentPage = () => {
             <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-800 mb-3 sm:mb-4 md:mb-6">
                 Quản lý Phòng Ban
             </h2>
-            {hasPermission() && (
-                <div className="mb-4">
+            <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
+                {hasPermission() ? (
                     <Button
                         type="primary"
                         onClick={() => setIsModalOpen(true)}
@@ -201,11 +218,17 @@ const DepartmentPage = () => {
                     >
                         Thêm Phòng Ban
                     </Button>
-                </div>
-            )}
+                ) : <div />}
+                <Input.Search
+                    placeholder="Tìm kiếm mã hoặc tên phòng ban"
+                    allowClear
+                    onChange={(e) => setSearchText(e.target.value)}
+                    style={{ width: 250 }}
+                />
+            </div>
 
             <Table
-                dataSource={departments}
+                dataSource={filteredDepartments}
                 columns={columns}
                 rowKey="_id"
                 loading={loading}

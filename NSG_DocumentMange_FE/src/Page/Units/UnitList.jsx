@@ -5,6 +5,7 @@ import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import { getAllUnits, createUnit, updateUnit, deleteUnit } from "../../api/unitApi";
 import Cookies from "js-cookie";
 import { jwtDecode } from "jwt-decode";
+import { removeVietnameseTones } from "../../utils/stringUtils";
 
 const UnitList = () => {
   const [units, setUnits] = useState([]);
@@ -13,10 +14,19 @@ const UnitList = () => {
   const [editingUnit, setEditingUnit] = useState(null);
   const [form] = Form.useForm();
   const [currentUserRole, setCurrentUserRole] = useState("");
+  const [searchText, setSearchText] = useState("");
   const [pagination, setPagination] = useState({
     current: 1,
-    pageSize: 10,
+    pageSize: 20,
     pageSizeOptions: ['10', '20', '50', '100'],
+  });
+
+  const filteredUnits = units.filter((unit) => {
+    const searchLower = removeVietnameseTones(searchText.toLowerCase());
+    return (
+      (unit.unitCode && removeVietnameseTones(unit.unitCode.toLowerCase()).includes(searchLower)) ||
+      (unit.unitName && removeVietnameseTones(unit.unitName.toLowerCase()).includes(searchLower))
+    );
   });
 
   // Lấy role của user từ token
@@ -131,7 +141,7 @@ const UnitList = () => {
     {
       title: "STT",
       key: "index",
-      render: (text, record, index) => index + 1,
+      render: (text, record, index) => (pagination.current - 1) * pagination.pageSize + index + 1,
       width: 60,
     },
     {
@@ -181,17 +191,25 @@ const UnitList = () => {
         bordered={false}
         className="shadow-sm rounded-lg mb-4"
         extra={
-          hasPermission() && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-              Thêm mới
-            </Button>
-          )
+          <Space>
+            <Input.Search
+              placeholder="Tìm kiếm mã hoặc tên cơ quan"
+              allowClear
+              onChange={(e) => setSearchText(e.target.value)}
+              style={{ width: 250 }}
+            />
+            {hasPermission() && (
+              <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+                Thêm mới
+              </Button>
+            )}
+          </Space>
         }
       />
       <Spin spinning={loading}>
         <Table
           columns={columns}
-          dataSource={units}
+          dataSource={filteredUnits}
           rowKey="_id"
           pagination={{
             current: pagination.current,

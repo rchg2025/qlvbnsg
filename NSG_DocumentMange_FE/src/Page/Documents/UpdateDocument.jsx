@@ -1,6 +1,7 @@
+import { formatFileName } from "../../utils/formatFileName";
 import { useEffect, useState } from "react";
 import { Form, Input, InputNumber, Select, Button, DatePicker, Upload, message, Row, Col, Card, Space, Tooltip, Collapse, Tag, Modal, Spin } from "antd";
-import { UploadOutlined, InfoCircleOutlined, SaveOutlined } from "@ant-design/icons";
+import { UploadOutlined, InfoCircleOutlined, SaveOutlined, InboxOutlined } from "@ant-design/icons";
 import { useParams, useNavigate } from "react-router-dom";
 import { getDocumentById, updateDocument, getTotalDocNum } from "../../api/documentApi";
 import { getAllDocVariants } from "../../api/docVariantApi";
@@ -330,7 +331,7 @@ const UpdateDocumentPage = () => {
       formData.append('existingFiles', JSON.stringify(existingFiles));
 
       newFiles.forEach(file => {
-        formData.append('files', file);
+        formData.append("files", file, formatFileName(file.name || "upload"));
       });
 
       // BE không cần allFiles tổng hợp
@@ -633,23 +634,36 @@ const UpdateDocumentPage = () => {
                     <Form.Item name="files"
                      label="File đính kèm"
                       tooltip="Tải lên tệp liên quan (nếu có)">
-                      <Upload
+                      <Upload.Dragger
                         multiple
                         fileList={fileList}
                         onChange={handleFileChange}
-                          listType="picture"
                         beforeUpload={() => false}
-                        className="upload-custom"
+                        itemRender={(originNode, file, fileList, actions) => (
+                          <div className="flex items-center justify-between p-2 mt-2 bg-gray-50 border border-gray-200 rounded-md hover:bg-blue-50 transition-colors">
+                            <div className="flex items-center space-x-2 overflow-hidden">
+                              <span className="text-blue-500 text-lg">📄</span>
+                              <span className="text-sm text-gray-700 truncate block" title={file.name || file.fileName}>
+                                {file.name || file.fileName}
+                              </span>
+                            </div>
+                            <span 
+                              className="text-red-500 cursor-pointer hover:text-red-700 font-bold px-2 text-lg" 
+                              onClick={actions.remove}
+                              title="Xóa"
+                            >
+                              ×
+                            </span>
+                          </div>
+                        )}
                       >
-                        <Button
-                          icon={<UploadOutlined />}
-                          type="dashed"
-                          block
-                          className="input-shadow hover:bg-gray-50 transition-colors"
-                        >
-                          Chọn tệp (hỗ trợ nhiều tệp)
-                        </Button>
-                      </Upload>
+                        <p className="ant-upload-drag-icon">
+                          <InboxOutlined className="text-blue-500 text-3xl" />
+                        </p>
+                        <p className="ant-upload-text text-gray-700 font-medium mt-2">
+                          Nhấp hoặc kéo thả tệp vào đây (hỗ trợ nhiều tệp)
+                        </p>
+                      </Upload.Dragger>
                     </Form.Item>
                   </Col>
                 </Row>

@@ -12,7 +12,10 @@ export const getTasks = async (userId) => {
 
 export const createTask = async (taskData) => {
     try {
-        const response = await axiosInstance.post(`/tasks`, taskData);
+        const isFormData = taskData instanceof FormData;
+        const response = await axiosInstance.post(`/tasks`, taskData, {
+            headers: isFormData ? { "Content-Type": "multipart/form-data" } : {},
+        });
         return response.data;
     } catch (error) {
         console.error('Error creating task', error);
@@ -22,7 +25,10 @@ export const createTask = async (taskData) => {
 
 export const updateTask = async (taskId, updates) => {
     try {
-        const response = await axiosInstance.put(`/tasks/${taskId}`, updates);
+        const isFormData = updates instanceof FormData;
+        const response = await axiosInstance.put(`/tasks/${taskId}`, updates, {
+            headers: isFormData ? { "Content-Type": "multipart/form-data" } : {},
+        });
         return response.data;
     } catch (error) {
         console.error('Error updating task', error);

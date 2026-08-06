@@ -36,6 +36,17 @@ export const googleApi = {
       throw error;
     }
   },
+
+  // 4. Hủy ủy quyền Google
+  revokeGoogleAuth: async () => {
+    try {
+      const response = await axiosInstance.post("/google/revoke");
+      return response.data;
+    } catch (error) {
+      console.error("Error revoking Google auth:", error);
+      throw error;
+    }
+  }
 };
 
 export default googleApi;

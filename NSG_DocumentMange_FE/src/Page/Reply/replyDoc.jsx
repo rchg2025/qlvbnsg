@@ -1,6 +1,7 @@
+import { formatFileName } from "../../utils/formatFileName";
 import { useState, useEffect } from 'react';
 import { Form, Input, Select, Button, DatePicker, Upload, message, Row, Col, Card, Space, Collapse } from 'antd';
-import { UploadOutlined, SaveOutlined } from '@ant-design/icons';
+import { UploadOutlined, SaveOutlined, InboxOutlined } from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getAllUsersCanSearchBanUser } from '../../api/auth';
 import { getAllDocVariants } from '../../api/docVariantApi';
@@ -304,23 +305,36 @@ const ReplyDocForm = () => {
 
                 <Col xs={24}>
                   <Form.Item name="files" label="Tệp đính kèm" tooltip="Tải lên các tệp liên quan (nếu có)">
-                    <Upload
+                    <Upload.Dragger
                       multiple
                       fileList={fileList}
                       onChange={handleFileChange}
                       beforeUpload={() => false}
-                      className="upload-custom"
-                      listType="picture"
+                      itemRender={(originNode, file, fileList, actions) => (
+                        <div className="flex items-center justify-between p-2 mt-2 bg-gray-50 border border-gray-200 rounded-md hover:bg-blue-50 transition-colors">
+                          <div className="flex items-center space-x-2 overflow-hidden">
+                            <span className="text-blue-500 text-lg">📄</span>
+                            <span className="text-sm text-gray-700 truncate block" title={file.name || file.fileName}>
+                              {file.name || file.fileName}
+                            </span>
+                          </div>
+                          <span 
+                            className="text-red-500 cursor-pointer hover:text-red-700 font-bold px-2 text-lg" 
+                            onClick={actions.remove}
+                            title="Xóa"
+                          >
+                            ×
+                          </span>
+                        </div>
+                      )}
                     >
-                      <Button
-                        icon={<UploadOutlined />}
-                        type="dashed"
-                        block
-                        className="input-shadow hover:bg-gray-50 transition-colors"
-                      >
+                      <p className="ant-upload-drag-icon">
+                        <InboxOutlined className="text-blue-500 text-3xl" />
+                      </p>
+                      <p className="ant-upload-text text-gray-700 font-medium mt-2">
                         Nhấn để chọn hoặc kéo thả tệp vào đây
-                      </Button>
-                    </Upload>
+                      </p>
+                    </Upload.Dragger>
                   </Form.Item>
                 </Col>
               </Row>

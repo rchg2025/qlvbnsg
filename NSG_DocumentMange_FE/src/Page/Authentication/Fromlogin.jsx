@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Form, Input, Button, message } from "antd";
-import { LockOutlined, UserOutlined, LoginOutlined, UnlockOutlined } from "@ant-design/icons";
+import { Form, Input, Button, message, Alert } from "antd";
+import { LockOutlined, UserOutlined, LoginOutlined, UnlockOutlined, GoogleOutlined } from "@ant-design/icons";
 import { useDispatch } from "react-redux";
+import { loginSuccess } from "../../redux/authSlice";
 import { login } from "../../redux/authActions";
+import axiosInstance from "../../api/axiosInstance";
 import { useNavigate } from "react-router-dom";
 import "../../../src/App.css";
 import Logo from "../../assets/Logo.webp"
@@ -15,14 +17,45 @@ const getCookie = (name) => {
 const FormLogin = () => {
     const dispatch = useDispatch();
     const [loading, setLoading] = useState(false);
+    const [googleErrorMsg, setGoogleErrorMsg] = useState("");
     const navigate = useNavigate();
     const accessToken = getCookie("accessToken");
 
     useEffect(() => {
-        if (accessToken) {
+        // Parse URL params for Google Login
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token');
+        const nameParam = params.get('name');
+        const error = params.get('error');
+
+        if (token) {
+            // Setup cookie
+            document.cookie = `accessToken=${token}; path=/; max-age=${4 * 60 * 60}; Secure`;
+            if (nameParam) {
+                document.cookie = `currentUser=${encodeURIComponent(nameParam)}; path=/; max-age=${4 * 60 * 60}; Secure`;
+                dispatch(loginSuccess({ name: nameParam, accessToken: token }));
+            }
+            message.success("Đăng nhập thành công!");
+            navigate("/dashboard");
+        } else if (error === 'account_not_found') {
+            setGoogleErrorMsg("Tài khoản email của bạn chưa được liên kết với tài khoản trên hệ thống, vui lòng liên hệ quản trị viên để được hỗ trợ.");
+            // Xóa URL param để tránh hiển thị lại lỗi khi refresh
+            window.history.replaceState({}, document.title, "/login");
+        } else if (accessToken) {
             navigate("/dashboard");
         }
-    }, [accessToken, navigate]);
+    }, [accessToken, navigate, dispatch]);
+
+    const handleGoogleLogin = async () => {
+        try {
+            const res = await axiosInstance.get('/google/auth-login');
+            if (res.data && res.data.url) {
+                window.location.href = res.data.url;
+            }
+        } catch (error) {
+            message.error("Lỗi khi kết nối đến Google, vui lòng thử lại sau!");
+        }
+    };
 
     const onFinish = async (values) => {
         const { email, password } = values;
@@ -68,6 +101,16 @@ const FormLogin = () => {
             autoComplete="off"
             className="w-full pb-10 mt-[-40px] "
         >
+            {googleErrorMsg && (
+                <Alert 
+                    message={googleErrorMsg} 
+                    type="error" 
+                    showIcon 
+                    className="mb-4"
+                    closable
+                    onClose={() => setGoogleErrorMsg("")}
+                />
+            )}
             
             <Form.Item 
     
@@ -118,6 +161,19 @@ const FormLogin = () => {
                     onClick={() => navigate("/reset-password")}
                 >
                     Quên mật khẩu?
+                </Button>
+
+                <div className="flex items-center justify-center my-2">
+                    <span className="bg-white px-2 text-gray-500">Hoặc</span>
+                </div>
+
+                <Button
+                    type="default"
+                    className="w-full flex items-center justify-center text-lg py-3 rounded-md border border-gray-300 hover:border-blue-500 hover:text-blue-500"
+                    icon={<GoogleOutlined style={{ color: '#db4437' }} />}
+                    onClick={handleGoogleLogin}
+                >
+                    Đăng nhập bằng Google
                 </Button>
             </div>
         </Form>

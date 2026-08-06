@@ -5,6 +5,8 @@ import { getAllPositions, createPosition, deletePosition, updatePosition } from 
 import Cookies from "js-cookie";
 import { jwtDecode } from "jwt-decode";
 
+import { removeVietnameseTones } from "../../utils/stringUtils";
+
 const PositionPage = () => {
   const [positions, setPositions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -13,6 +15,15 @@ const PositionPage = () => {
   const [form] = Form.useForm();
   const [selectedPosition, setSelectedPosition] = useState(null);
   const [currentUserRole, setCurrentUserRole] = useState("");
+  const [searchText, setSearchText] = useState("");
+
+  const filteredPositions = positions.filter((pos) => {
+    const searchLower = removeVietnameseTones(searchText.toLowerCase());
+    return (
+      (pos.positionCode && removeVietnameseTones(pos.positionCode.toLowerCase()).includes(searchLower)) ||
+      (pos.positionName && removeVietnameseTones(pos.positionName.toLowerCase()).includes(searchLower))
+    );
+  });
 
   // Lấy role của user từ token
   useEffect(() => {
@@ -100,6 +111,13 @@ const PositionPage = () => {
 
   const columns = [
     {
+      title: "STT",
+      key: "stt",
+      width: 60,
+      align: "center",
+      render: (text, record) => filteredPositions.indexOf(record) + 1,
+    },
+    {
       title: "Mã chức vụ",
       dataIndex: "positionCode",
       key: "positionCode",
@@ -142,22 +160,29 @@ const PositionPage = () => {
 
   return (
     <div style={{ padding: "20px" }}>
-      {hasPermission() && (
-        <Button
-          type="primary"
-          onClick={() => setIsModalOpen(true)}
-          style={{ marginBottom: "20px" }}
-        >
-          Thêm chức vụ
-        </Button>
-      )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+        {hasPermission() ? (
+          <Button
+            type="primary"
+            onClick={() => setIsModalOpen(true)}
+          >
+            Thêm chức vụ
+          </Button>
+        ) : <div />}
+        <Input.Search
+          placeholder="Tìm kiếm theo mã hoặc tên chức vụ"
+          allowClear
+          onChange={(e) => setSearchText(e.target.value)}
+          style={{ width: 300 }}
+        />
+      </div>
 
       <Table
-        dataSource={positions}
+        dataSource={filteredPositions}
         columns={columns}
         rowKey="_id"
         loading={loading}
-        pagination={{ pageSize: 5 }}
+        pagination={{ pageSize: 20 }}
         locale={{
           emptyText: "Không có dữ liệu",
         }}

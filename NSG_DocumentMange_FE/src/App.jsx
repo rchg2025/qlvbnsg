@@ -34,6 +34,8 @@ import UnitList from './Page/Units/UnitList';
 import Report from './Page/Report/Report.jsx';
 import Statistics from './Page/Statistics/statistics.jsx';
 import SchedulePage from './Page/Schedule/SchedulePage.jsx';
+import ChatbotConfig from './Page/Chatbot/ChatbotConfig.jsx';
+import ChatbotWidget from './components/ChatbotWidget/ChatbotWidget.jsx';
 
 function App() {
   const ZaloOAID = import.meta.env.VITE_ZALO_OAID;
@@ -283,6 +285,7 @@ const [isMobile, setIsMobile] = useState(false);
                   </div>
                   {renderChatWidgets()}
                   {renderFloatingButtonGroup()}
+                  <ChatbotWidget />
                 </div>
               </NotificationProvider>
             </PrivateRoute>
@@ -303,6 +306,9 @@ const [isMobile, setIsMobile] = useState(false);
           <Route path="/getAllRepliedDoc" element={<AllRepliedDoc />} />
           <Route path="/repliedDocs/edit/:id" element={<EditRepliedDoc />} />
           <Route path="/bgh-review" element={<BGHReviewPage />} />
+          <Route path="Report" element={<Report />} />
+          <Route path="schedule" element={<SchedulePage />} />
+          <Route path="schedule/:tab" element={<SchedulePage />} />
           <Route element={<ProtectedRoute />}>
             <Route path="DepartmentForm" element={<DepartmentForm />} />
             <Route path="Position" element={<Position />} />
@@ -310,9 +316,8 @@ const [isMobile, setIsMobile] = useState(false);
             <Route path="CreateUser" element={<CreateUser />} />
             <Route path="Listusers" element={<UserListPage />} />
             <Route path="Units" element={<UnitList />} />
-            <Route path="Report" element={<Report />} />
             <Route path="Statistics" element={<Statistics />} />
-            <Route path="schedule" element={<SchedulePage />} />
+            <Route path="ChatbotConfig" element={<ChatbotConfig />} />
           </Route>
         </Route>
       </Routes>

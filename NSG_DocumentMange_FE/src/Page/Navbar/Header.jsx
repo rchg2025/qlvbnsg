@@ -15,7 +15,7 @@ const { Header } = Layout;
 const AppHeader = ({ onMenuClick }) => {
   const [userName, setUserName] = useState("");
   const [isMobile, setIsMobile] = useState(false);
-  const { unreadDocCount, myPendingReplyCount, userRole, userId } = useNotificationContext();
+  const { unreadDocCount, myPendingReplyCount, userRole, userId, todoTaskCount } = useNotificationContext();
   const [totalPendingReplies, setTotalPendingReplies] = useState(0);
   const [deadlineCounts, setDeadlineCounts] = useState({ soonCount: 0, dueTodayCount: 0, overdueCount: 0 });
   const [showPopover, setShowPopover] = useState(false);
@@ -72,13 +72,13 @@ const AppHeader = ({ onMenuClick }) => {
 
   // Show Popover when there are notifications
   useEffect(() => {
-    if ((unreadDocCount > 0 || myPendingReplyCount > 0 || totalPendingReplies > 0 || 
+    if ((unreadDocCount > 0 || myPendingReplyCount > 0 || totalPendingReplies > 0 || todoTaskCount > 0 ||
          deadlineCounts.soonCount > 0 || deadlineCounts.dueTodayCount > 0 || deadlineCounts.overdueCount > 0) && userId) {
       setShowPopover(true);
       const timer = setTimeout(() => setShowPopover(false), 5000);
       return () => clearTimeout(timer);
     }
-  }, [unreadDocCount, myPendingReplyCount, totalPendingReplies, deadlineCounts, userId]);
+  }, [unreadDocCount, myPendingReplyCount, totalPendingReplies, deadlineCounts, todoTaskCount, userId]);
 
   // Check if mobile screen
   useEffect(() => {
@@ -103,7 +103,7 @@ const AppHeader = ({ onMenuClick }) => {
   };
 
   // Tính tổng số lượng thông báo
-  const totalNotifications = (unreadDocCount || 0) + (isAdmin ? (totalPendingReplies || 0) : (myPendingReplyCount || 0));
+  const totalNotifications = (unreadDocCount || 0) + (isAdmin ? (totalPendingReplies || 0) : (myPendingReplyCount || 0)) + (todoTaskCount || 0);
 
   const menuItems = [
     {
@@ -163,10 +163,9 @@ const AppHeader = ({ onMenuClick }) => {
         </div>
       </div>
 
-      {/* Right side - Bell notification (mobile only) and User info */}
+      {/* Right side - Bell notification and User info */}
       <div className="flex items-center gap-2 sm:gap-5">
-        {/* Bell notification - only show on mobile */}
-        {isMobile && (
+        {/* Bell notification */}
           <Popover
             content={
               <div className="text-sm space-y-2">
@@ -225,6 +224,17 @@ const AppHeader = ({ onMenuClick }) => {
                     </Link>
                   </p>
                 )}
+                {todoTaskCount > 0 && (
+                  <p>
+                    <Link 
+                      to="/schedule/todo" 
+                      className="text-blue-600 hover:text-blue-800 hover:underline"
+                      onClick={() => setShowPopover(false)}
+                    >
+                      Bạn có <b>{todoTaskCount}</b> công việc chưa làm.
+                    </Link>
+                  </p>
+                )}
               </div>
             }
             title="Thông báo mới"
@@ -243,7 +253,6 @@ const AppHeader = ({ onMenuClick }) => {
               <BellOutlined className={`text-white text-xl cursor-pointer transition-all ${showPopover ? "shake" : ""}`} />
             </Badge>
           </Popover>
-        )}
 
         {!isMobile && (
           <span className="font-bold text-white">{userName}</span>

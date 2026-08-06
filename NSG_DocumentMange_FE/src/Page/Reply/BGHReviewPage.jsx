@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Table,
@@ -17,29 +17,35 @@ import {
   Row,
   Col,
   Upload,
+  Typography,
 } from "antd";
-import { EyeOutlined, CheckOutlined, CloseOutlined, SearchOutlined, UploadOutlined, DeleteOutlined } from "@ant-design/icons";
+import { EyeOutlined, CheckOutlined, CloseOutlined, SearchOutlined, UploadOutlined, DeleteOutlined, FileDoneOutlined, InboxOutlined, FormOutlined, DownloadOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import Cookies from "js-cookie";
 import { jwtDecode } from "jwt-decode";
 import moment from "moment";
-import { getReviewedDocs, reviewerAction, updateRepliedDoc, getRepliedDocById } from "../../api/repliedDocApi";
+import { getReviewedDocs, reviewerAction, updateRepliedDoc, getRepliedDocById, processRepliedDoc, signFile } from "../../api/repliedDocApi";
 import { getUserInfo } from "../../api/auth";
 import { getAllUsers } from "../../api/auth";
 import { getAllDocVariants } from "../../api/docVariantApi";
 import { getAllDocuments, getDocumentById } from "../../api/documentApi";
+import { formatFileName } from "../../utils/formatFileName";
+
+const { Title } = Typography;
 
 const BGHReviewPage = () => {
   const [reviewedDocs, setReviewedDocs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [additionalDataLoading, setAdditionalDataLoading] = useState(false);
+  const attemptedMissingIdsRef = useRef(new Set());
   const [pagination, setPagination] = useState({
     current: 1,
-    pageSize: 50,
+    pageSize: 10,
     total: 0,
     pageSizeOptions: [10, 20, 50, 100],
   });
   const [userId, setUserId] = useState(null);
+  const [userRole, setUserRole] = useState(null);
   const [userDepartment, setUserDepartment] = useState(null);
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -53,13 +59,11 @@ const BGHReviewPage = () => {
   
   // Search filters
   const [searchFilters, setSearchFilters] = useState({
-    replyBy: "",
-    docCodeAndNum: "",
-    shortDescription: "",
+    generalSearch: "",
     docVariant: null,
     status: null,
     replyAtFrom: null,
-    replyAtTo: null,
+    replyAtTo: dayjs().toDate(),
     reviewDateFrom: null,
     reviewDateTo: null,
   });
@@ -79,6 +83,7 @@ const BGHReviewPage = () => {
         const currentUserId = decodedToken.userId;
         const role = decodedToken.role;
         setUserId(currentUserId);
+        setUserRole(role);
         
         // Lấy thông tin user để kiểm tra department
         getUserInfo(currentUserId)
@@ -209,8 +214,10 @@ const BGHReviewPage = () => {
           .filter((id) => !!id)
       )
     );
-    const missingIds = originalIds.filter((id) => !currentIds.has(id));
+    const missingIds = originalIds.filter((id) => !currentIds.has(id) && !attemptedMissingIdsRef.current.has(id));
     if (missingIds.length === 0) return;
+
+    missingIds.forEach(id => attemptedMissingIdsRef.current.add(id));
 
     let isCancelled = false;
     setAdditionalDataLoading(true);
@@ -321,6 +328,9 @@ const BGHReviewPage = () => {
           }
         }
       }
+      if (record?.replyBy) {
+        return getUserName(record.replyBy);
+      }
       return "N/A";
     },
     [getOriginalDocDetails, getUserName]
@@ -363,14 +373,13 @@ const BGHReviewPage = () => {
           // Tạo FormData để update file
           const formData = new FormData();
           
-          // Không giữ lại file cũ (truyền mảng rỗng để xóa tất cả file cũ)
-          // Backend sẽ xóa tất cả file không có trong existingFiles
-          formData.append('existingFiles', JSON.stringify([]));
+          // Backend sẽ cập nhật và giữ lại những file có trong existingFiles
+          formData.append('existingFiles', JSON.stringify(existingFiles));
           
           // Thêm file mới
           approvalFiles.forEach(file => {
             if (file.originFileObj) {
-              formData.append('files', file.originFileObj);
+              formData.append("files", file.originFileObj, formatFileName(file.originFileObj.name || file.name || "upload"));
             }
           });
           
@@ -408,11 +417,30 @@ const BGHReviewPage = () => {
     }
   }, [approvingDocId, approvalFiles, fetchReviewedDocs, selectedDoc]);
 
-  const handleOpenRejectModal = useCallback((repliedDocId) => {
-    setRejectingDocId(repliedDocId);
+  const handleIssueDocument = useCallback(async (record) => {
+    try {
+      if (record.status !== "approved") {
+        await processRepliedDoc(record._id, "approve");
+        message.success("Đã chuyển trạng thái văn bản thành Đã chấp nhận");
+      }
+      navigate("/documents/create", {
+        state: {
+          shortDescription: record.shortDescription,
+          files: record.files,
+          signer: record.reviewer?._id || record.reviewer,
+          repliedDocId: record._id,
+        },
+      });
+    } catch (error) {
+      message.error(error.message || "Lỗi khi cập nhật trạng thái văn bản");
+    }
+  }, [navigate]);
+
+  const handleOpenRejectModal = (id) => {
+    setRejectingDocId(id);
     setReviewerNotes("");
     setIsRejectModalVisible(true);
-  }, []);
+  };
 
   const handleReject = useCallback(async () => {
     if (!reviewerNotes || reviewerNotes.trim() === "") {
@@ -452,7 +480,7 @@ const BGHReviewPage = () => {
     setPagination((prev) => ({
       ...prev,
       current: paginationConfig.current || 1,
-      pageSize: paginationConfig.pageSize || 50,
+      pageSize: paginationConfig.pageSize || 10,
     }));
   }, []);
 
@@ -468,26 +496,13 @@ const BGHReviewPage = () => {
   const filteredDocs = useMemo(() => {
     let filtered = [...reviewedDocs];
 
-    if (searchFilters.replyBy) {
-      const searchTerm = searchFilters.replyBy.toLowerCase();
+    if (searchFilters.generalSearch) {
+      const searchTerm = searchFilters.generalSearch.toLowerCase();
       filtered = filtered.filter((doc) => {
         const replyByName = getUserName(doc.replyBy).toLowerCase();
-        return replyByName.includes(searchTerm);
-      });
-    }
-
-    if (searchFilters.docCodeAndNum) {
-      const searchTerm = searchFilters.docCodeAndNum.toLowerCase();
-      filtered = filtered.filter((doc) => {
         const codeAndNum = getDocCodeAndNum(doc).toLowerCase();
-        return codeAndNum.includes(searchTerm);
-      });
-    }
-
-    if (searchFilters.shortDescription) {
-      const searchTerm = searchFilters.shortDescription.toLowerCase();
-      filtered = filtered.filter((doc) => {
-        return doc.shortDescription?.toLowerCase().includes(searchTerm);
+        const shortDesc = (doc.shortDescription || "").toLowerCase();
+        return replyByName.includes(searchTerm) || codeAndNum.includes(searchTerm) || shortDesc.includes(searchTerm);
       });
     }
 
@@ -570,13 +585,11 @@ const BGHReviewPage = () => {
 
   const handleResetSearch = useCallback(() => {
     setSearchFilters({
-      replyBy: "",
-      docCodeAndNum: "",
-      shortDescription: "",
+      generalSearch: "",
       docVariant: null,
       status: null,
       replyAtFrom: null,
-      replyAtTo: null,
+      replyAtTo: dayjs().toDate(),
       reviewDateFrom: null,
       reviewDateTo: null,
     });
@@ -662,6 +675,16 @@ const BGHReviewPage = () => {
           if (record.status === "rejectedByReviewer" && record.reviewRejectionTime) {
             return moment(record.reviewRejectionTime).format("DD/MM/YYYY HH:mm");
           }
+          // Nếu đã chấp nhận (approved) → hiển thị approvalTime hoặc reviewTime
+          if (record.status === "approved") {
+            const time = record.approvalTime || record.reviewTime;
+            if (time) return moment(time).format("DD/MM/YYYY HH:mm");
+          }
+          // Nếu đã từ chối (rejected) → hiển thị rejectionTime hoặc reviewRejectionTime
+          if (record.status === "rejected") {
+            const time = record.rejectionTime || record.reviewRejectionTime;
+            if (time) return moment(time).format("DD/MM/YYYY HH:mm");
+          }
           return "N/A";
         },
       },
@@ -702,25 +725,34 @@ const BGHReviewPage = () => {
         key: "files",
         width: 200,
         render: (text, record) => {
-          if (!record.files || record.files.length === 0) {
+          if (!record.files || !Array.isArray(record.files) || record.files.length === 0) {
             return <span className="text-gray-400">Không có</span>;
           }
           return (
-            <div className="flex flex-col gap-1">
-              {record.files.slice(0, 2).map((file, index) => (
-                <a
-                  key={file.fileId || file._id || index}
-                  href={`https://drive.google.com/file/d/${file.fileId || file._id}/view`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline text-xs truncate"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {file.fileName || file.name || "File"}
-                </a>
-              ))}
+            <div className="flex flex-col gap-2">
+              {record.files.slice(0, 2).map((file, index) => {
+                const rawName = file.fileName || file.name || "File";
+                return (
+                  <div key={file.fileId || file._id || index} className="flex items-center p-1.5 bg-gray-50 border border-gray-200 rounded-md hover:bg-blue-50 transition-colors" style={{ maxWidth: "200px" }}>
+                    <div className="flex-1 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                      <a
+                        href={`https://drive.google.com/file/d/${file.fileId || file._id}/view`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-medium text-blue-600 hover:underline block truncate"
+                        title={rawName}
+                      >
+                        {rawName}
+                      </a>
+                      <span className="text-[10px] text-gray-500 block truncate" title={`${file.uploadDate ? moment(file.uploadDate).format("DD/MM/YYYY HH:mm") : ""} - ${file.uploadedByName || "Người trình ký"}`}>
+                        {file.uploadDate ? moment(file.uploadDate).format("DD/MM/YYYY HH:mm") : ""} - {file.uploadedByName || "Người trình ký"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
               {record.files.length > 2 && (
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-gray-500 ml-1">
                   +{record.files.length - 2} file khác
                 </span>
               )}
@@ -781,6 +813,22 @@ const BGHReviewPage = () => {
                 </Tooltip>
               </>
             )}
+            {(record.status === "approvedByReviewer" || record.status === "approved") && (userRole === "manager" || userRole === "admin") && !record.isIssued && (
+              <Tooltip title="Ban hành VB">
+                <Button
+                  size="small"
+                  type="default"
+                  icon={<FileDoneOutlined />}
+                  className="rounded-md text-xs border-blue-500 text-blue-500 hover:bg-blue-50"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleIssueDocument(record);
+                  }}
+                >
+                  <span className="hidden sm:inline text-xs">Ban hành VB</span>
+                </Button>
+              </Tooltip>
+            )}
           </div>
         ),
       },
@@ -798,6 +846,7 @@ const BGHReviewPage = () => {
       handleOpenApproveModal,
       handleOpenRejectModal,
       userDepartment,
+      userRole,
     ]
   );
 
@@ -815,30 +864,12 @@ const BGHReviewPage = () => {
       {/* Search Bar */}
       <Card className="mb-4 shadow-sm">
         <Row gutter={[16, 16]}>
-          <Col xs={24} sm={12} md={8} lg={6}>
+          <Col xs={24} sm={12} md={16} lg={12}>
             <Input
-              placeholder="Tìm theo người trình ký"
+              placeholder="Tìm chung (Người trình ký, số/ký hiệu, trích yếu...)"
               prefix={<SearchOutlined />}
-              value={searchFilters.replyBy}
-              onChange={(e) => setSearchFilters((prev) => ({ ...prev, replyBy: e.target.value }))}
-              allowClear
-            />
-          </Col>
-          <Col xs={24} sm={12} md={8} lg={6}>
-            <Input
-              placeholder="Tìm theo số/ký hiệu"
-              prefix={<SearchOutlined />}
-              value={searchFilters.docCodeAndNum}
-              onChange={(e) => setSearchFilters((prev) => ({ ...prev, docCodeAndNum: e.target.value }))}
-              allowClear
-            />
-          </Col>
-          <Col xs={24} sm={12} md={8} lg={6}>
-            <Input
-              placeholder="Tìm theo trích yếu"
-              prefix={<SearchOutlined />}
-              value={searchFilters.shortDescription}
-              onChange={(e) => setSearchFilters((prev) => ({ ...prev, shortDescription: e.target.value }))}
+              value={searchFilters.generalSearch}
+              onChange={(e) => setSearchFilters((prev) => ({ ...prev, generalSearch: e.target.value }))}
               allowClear
             />
           </Col>
@@ -1002,13 +1033,13 @@ const BGHReviewPage = () => {
                     ? moment(selectedDoc.createdAt).format("DD/MM/YYYY HH:mm")
                     : "N/A"}
                 </p>
-                {selectedDoc.status === "approvedByReviewer" && selectedDoc.reviewTime && (
+                {(selectedDoc.status === "approvedByReviewer" || selectedDoc.status === "approved") && selectedDoc.reviewTime && (
                   <p>
                     <strong>Ngày duyệt (BGH):</strong>{" "}
                     {moment(selectedDoc.reviewTime).format("DD/MM/YYYY HH:mm")}
                   </p>
                 )}
-                {selectedDoc.status === "rejectedByReviewer" && selectedDoc.reviewRejectionTime && (
+                {(selectedDoc.status === "rejectedByReviewer" || selectedDoc.status === "rejected") && selectedDoc.reviewRejectionTime && (
                   <p>
                     <strong>Ngày từ chối (BGH):</strong>{" "}
                     {moment(selectedDoc.reviewRejectionTime).format("DD/MM/YYYY HH:mm")}
@@ -1027,19 +1058,70 @@ const BGHReviewPage = () => {
             <Card size="small" className="border-gray-200 rounded-lg">
               <h3 className="font-semibold text-gray-700 mb-2 border-b pb-1">📎 Tệp đính kèm</h3>
               {selectedDoc.files && selectedDoc.files.length > 0 ? (
-                <ul className="list-disc pl-5 text-blue-600">
-                  {selectedDoc.files.map((file) => (
-                    <li key={file.fileId} className="hover:underline">
-                      <a
-                        href={`https://drive.google.com/file/d/${file.fileId}/view`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {file.fileName}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
+                <Table
+                  dataSource={selectedDoc.files}
+                  pagination={false}
+                  rowKey="fileId"
+                  size="small"
+                  bordered
+                  columns={[
+                    {
+                      title: 'STT',
+                      key: 'stt',
+                      render: (text, record, index) => index + 1,
+                      width: 60,
+                      align: 'center',
+                    },
+                    {
+                      title: 'Tên tài liệu',
+                      key: 'fileName',
+                      render: (text, record) => {
+                        const rawName = record.fileName || record.name || "File";
+                        return (
+                          <a
+                            href={`https://drive.google.com/file/d/${record.fileId}/view`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            {rawName}
+                          </a>
+                        );
+                      }
+                    },
+                    {
+                      title: 'Thao tác',
+                      key: 'action',
+                      width: 150,
+                      align: 'center',
+                      render: (text, record) => {
+                        return (
+                          <div className="flex gap-2 justify-center">
+                            <Button 
+                              type="text" 
+                              icon={<EyeOutlined className="text-green-600 text-lg" />} 
+                              title="Xem file" 
+                              onClick={() => window.open(`https://drive.google.com/file/d/${record.fileId}/view`)}
+                            />
+                            <Button 
+                              type="text" 
+                              icon={<DownloadOutlined className="text-blue-500 text-lg" />} 
+                              title="Tải xuống"
+                              onClick={() => {
+                                const link = document.createElement('a');
+                                link.href = `https://drive.google.com/uc?export=download&id=${record.fileId}`;
+                                link.setAttribute('download', '');
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                            />
+                          </div>
+                        );
+                      }
+                    }
+                  ]}
+                />
               ) : (
                 <p>Không có tệp đính kèm.</p>
               )}
@@ -1149,52 +1231,125 @@ const BGHReviewPage = () => {
           {/* Hiển thị file đã có */}
           {existingFiles.length > 0 && (
             <div className="mb-4">
-              <p className="text-sm font-semibold mb-2">📎File đính kèm:</p>
-              <ul className="list-disc pl-5 border rounded p-3 bg-gray-50">
-                {existingFiles.map((file) => (
-                  <li key={file.fileId || file._id} className="mb-1">
-                    <a
-                      href={`https://drive.google.com/file/d/${file.fileId || file._id}/view`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline"
-                    >
-                      {file.fileName || file.name || "Không có tên"}
-                    </a>
-                  </li>
-                ))}
-              </ul>
+              <p className="text-sm font-semibold mb-2">📎 File đính kèm:</p>
+              <Table
+                dataSource={existingFiles}
+                pagination={false}
+                rowKey={(record) => record.fileId || record._id}
+                size="small"
+                bordered
+                columns={[
+                  {
+                    title: 'STT',
+                    key: 'stt',
+                    render: (text, record, index) => index + 1,
+                    width: 60,
+                    align: 'center',
+                  },
+                  {
+                    title: 'Tên tài liệu',
+                    key: 'fileName',
+                    render: (text, record) => {
+                      const rawName = formatFileName(record.fileName || record.name || "File");
+                      return (
+                        <a
+                          href={`https://drive.google.com/file/d/${record.fileId || record._id}/view`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline"
+                        >
+                          {rawName}
+                        </a>
+                      );
+                    }
+                  },
+                  {
+                    title: 'Thao tác',
+                    key: 'action',
+                    width: 150,
+                    align: 'center',
+                    render: (text, record) => {
+                      const rawName = formatFileName(record.fileName || record.name || "File");
+                      return (
+                        <div className="flex gap-2 justify-center">
+                          <Button 
+                            type="text" 
+                            icon={<FormOutlined className="text-green-600 text-lg" />} 
+                            title="Ký số" 
+                            onClick={async () => {
+                              try {
+                                message.loading({ content: 'Đang mở phần mềm ký số...', key: 'signFile' });
+                                const response = await signFile(record.fileId || record._id, rawName);
+                                if (response && response.isSuccess && response.file) {
+                                  message.success({ content: 'Ký số thành công! Đã thêm vào danh sách file duyệt.', key: 'signFile', duration: 3 });
+                                  // Thêm file vào danh sách approvalFiles
+                                  const newFile = {
+                                    uid: `signed_${Date.now()}`,
+                                    name: response.file.name,
+                                    status: 'done',
+                                    originFileObj: response.file,
+                                  };
+                                  setApprovalFiles(prev => [...prev, newFile]);
+                                }
+                              } catch (error) {
+                                message.error({ content: error.message || 'Lỗi khi mở phần mềm ký số', key: 'signFile', duration: 3 });
+                              }
+                            }}
+                          />
+                          <Button 
+                            type="text" 
+                            icon={<DownloadOutlined className="text-blue-500 text-lg" />} 
+                            title="Tải xuống"
+                            onClick={() => {
+                              const fileId = record.fileId || record._id;
+                              const link = document.createElement('a');
+                              link.href = `https://drive.google.com/uc?export=download&id=${fileId}`;
+                              link.setAttribute('download', '');
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                            }}
+                          />
+                        </div>
+                      );
+                    }
+                  }
+                ]}
+              />
             </div>
           )}
           
           <p className="mb-2">Đính kèm file (Tùy chọn)</p>
-          <Upload
+          <Upload.Dragger
             fileList={approvalFiles}
             onChange={handleFileChange}
             beforeUpload={() => false}
             multiple
+            itemRender={(originNode, file, fileList, actions) => (
+              <div className="flex items-center justify-between p-2 mt-2 bg-gray-50 border border-gray-200 rounded-md hover:bg-blue-50 transition-colors">
+                <div className="flex items-center space-x-2 overflow-hidden">
+                  <span className="text-blue-500 text-lg">📄</span>
+                  <span className="text-sm text-gray-700 truncate block" title={file.name || file.fileName}>
+                    {file.name || file.fileName}
+                  </span>
+                </div>
+                <span 
+                  className="text-red-500 cursor-pointer hover:text-red-700 font-bold px-2 text-lg" 
+                  onClick={actions.remove}
+                  title="Xóa"
+                >
+                  ×
+                </span>
+              </div>
+            )}
           >
-            <Button icon={<UploadOutlined />}>Chọn file</Button>
-          </Upload>
-          {approvalFiles.length > 0 && (
-            <div className="mt-2">
-              <p className="text-sm font-semibold mb-2">Danh sách file đính kèm:</p>
-              <ul className="list-disc pl-5">
-                {approvalFiles.map((file) => (
-                  <li key={file.uid} className="flex items-center justify-between mb-1">
-                    <span>{file.name}</span>
-                    <Button
-                      type="text"
-                      danger
-                      size="small"
-                      icon={<DeleteOutlined />}
-                      onClick={() => handleRemoveFile(file)}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+            <p className="ant-upload-drag-icon">
+              <InboxOutlined className="text-blue-500 text-3xl" />
+            </p>
+            <p className="ant-upload-text text-gray-700 font-medium mt-2">
+              Nhấn để chọn hoặc kéo thả tệp vào đây
+            </p>
+          </Upload.Dragger>
         </div>
       </Modal>
     </div>

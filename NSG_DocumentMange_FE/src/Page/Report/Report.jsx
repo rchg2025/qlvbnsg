@@ -28,7 +28,7 @@ import utc from "dayjs/plugin/utc";
 import { getAllUnits } from "../../api/unitApi.js";
 import axiosInstance from "../../api/axiosInstance";
 import FilterFormWrapper from "../../components/FilterFormWrapper.jsx";
-import { SearchOutlined, ReloadOutlined, FileExcelOutlined } from "@ant-design/icons";
+import { SearchOutlined, ReloadOutlined, FileExcelOutlined, EyeOutlined, DownloadOutlined } from "@ant-design/icons";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(utc);
@@ -160,7 +160,7 @@ const ReportPage = () => {
         setDisplayedDocuments(pageDocs);
         setPagination((prev) => ({
           ...prev,
-          total: response.totalDocuments || pageDocs.length,
+          total: Math.min(response.totalDocuments || pageDocs.length, 50),
         }));
       } else {
         message.error(response?.message || "Không thể lấy dữ liệu tài liệu");
@@ -378,7 +378,7 @@ const ReportPage = () => {
           const pageDocs = (res.data || []).map(normalizeDocument);
           setDocuments(pageDocs);
           setDisplayedDocuments(pageDocs);
-          setPagination((prev) => ({ ...prev, total: res.totalDocuments || pageDocs.length }));
+          setPagination((prev) => ({ ...prev, total: Math.min(res.totalDocuments || pageDocs.length, 50) }));
         } else {
           setDocuments([]);
           setDisplayedDocuments([]);
@@ -468,6 +468,10 @@ const ReportPage = () => {
       };
 
       Object.keys(query).forEach((key) => query[key] === undefined && delete query[key]);
+
+      if (userRole !== "admin" && userRole !== "manager" && userId) {
+        query.userId = userId;
+      }
 
       const response = await axiosInstance.get("/exports", {
         params: query,
@@ -863,11 +867,9 @@ const ReportPage = () => {
             <Button type="default" icon={<ReloadOutlined />} onClick={handleResetFilters} className="rounded-md">
               Đặt lại
             </Button>
-            {(userRole === "admin" || userRole === "manager") && (
-              <Button type="primary" icon={<FileExcelOutlined />} onClick={handleExportExcel} className="rounded-md">
-                Xuất Excel
-              </Button>
-            )}
+            <Button type="primary" icon={<FileExcelOutlined />} onClick={handleExportExcel} className="rounded-md">
+              Xuất Excel
+            </Button>
           </div>
         {/* </div> */}
         </FilterFormWrapper>
@@ -1003,20 +1005,70 @@ const ReportPage = () => {
             <Card size="small" className="border-gray-200 rounded-lg">
               <h3 className="font-semibold text-gray-700 mb-2 border-b pb-1">📎 Tệp đính kèm</h3>
               {selectedDocument.files && selectedDocument.files.length > 0 ? (
-                <ul className="list-disc pl-5 space-y-1">
-                  {selectedDocument.files.map((file) => (
-                    <li key={file.fileId}>
-                      <a
-                        href={`https://drive.google.com/file/d/${file.fileId}/view?usp=sharing`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline break-all"
-                      >
-                        {file.fileName}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
+                <Table
+                  dataSource={selectedDocument.files}
+                  pagination={false}
+                  rowKey="fileId"
+                  size="small"
+                  bordered
+                  columns={[
+                    {
+                      title: 'STT',
+                      key: 'stt',
+                      render: (text, record, index) => index + 1,
+                      width: 60,
+                      align: 'center',
+                    },
+                    {
+                      title: 'Tên tài liệu',
+                      key: 'fileName',
+                      render: (text, record) => {
+                        const rawName = record.fileName || record.name || "File";
+                        return (
+                          <a
+                            href={`https://drive.google.com/file/d/${record.fileId}/view`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            {rawName}
+                          </a>
+                        );
+                      }
+                    },
+                    {
+                      title: 'Thao tác',
+                      key: 'action',
+                      width: 150,
+                      align: 'center',
+                      render: (text, record) => {
+                        return (
+                          <div className="flex gap-2 justify-center">
+                            <Button 
+                              type="text" 
+                              icon={<EyeOutlined className="text-green-600 text-lg" />} 
+                              title="Xem file" 
+                              onClick={() => window.open(`https://drive.google.com/file/d/${record.fileId}/view`)}
+                            />
+                            <Button 
+                              type="text" 
+                              icon={<DownloadOutlined className="text-blue-500 text-lg" />} 
+                              title="Tải xuống"
+                              onClick={() => {
+                                const link = document.createElement('a');
+                                link.href = `https://drive.google.com/uc?export=download&id=${record.fileId}`;
+                                link.setAttribute('download', '');
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                            />
+                          </div>
+                        );
+                      }
+                    }
+                  ]}
+                />
               ) : (
                 <p>Không có tệp đính kèm.</p>
               )}

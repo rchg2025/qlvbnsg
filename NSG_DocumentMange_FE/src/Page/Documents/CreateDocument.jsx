@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { formatFileName } from "../../utils/formatFileName";
+import { useState, useEffect, useRef } from "react";
 import {
   Form,
   Input,
@@ -17,8 +18,8 @@ import {
   Tag,
   Spin,
 } from "antd";
-import { UploadOutlined, InfoCircleOutlined, SaveOutlined, RedoOutlined } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
+import { UploadOutlined, InfoCircleOutlined, SaveOutlined, RedoOutlined, DeleteOutlined, InboxOutlined } from "@ant-design/icons";
+import { useNavigate, useLocation } from "react-router-dom";
 import { uploadDocument, getNextDocNum, getTotalDocNum } from "../../api/documentApi";
 import { getAllDocVariants } from "../../api/docVariantApi";
 import { getAllDepartments } from "../../api/DepartmentAPI";
@@ -48,6 +49,7 @@ const urgencyTag = (urgency) => {
 const DocumentForm = () => {
   const [form] = Form.useForm();
   const navigate = useNavigate();
+  const location = useLocation();
   const [signers, setSigners] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [units, setUnits] = useState([]);
@@ -62,6 +64,41 @@ const DocumentForm = () => {
   const [displayPositionName, setDisplayPositionName] = useState("");
 
   const docTypeWatch = Form.useWatch("docType", form);
+
+  useEffect(() => {
+    if (location.state) {
+      if (location.state.shortDescription) {
+        form.setFieldsValue({ shortDescription: location.state.shortDescription });
+      }
+      if (location.state.signer && signers.length > 0) {
+        form.setFieldsValue({ signer: location.state.signer, docType: "sent" });
+        const selectedSigner = signers.find((s) => s._id === location.state.signer);
+        if (selectedSigner) {
+          const signerDepartmentId = selectedSigner?.department?._id;
+          const signerPositionId = selectedSigner?.position?._id || "";
+          const signerPositionName = selectedSigner?.position?.positionName || "";
+          form.setFieldsValue({
+            position: signerPositionId,
+            departments: signerDepartmentId ? [signerDepartmentId] : [],
+          });
+          setDisplayPositionName(signerPositionName);
+        }
+      }
+      if (location.state.files && location.state.files.length > 0) {
+        const mappedFiles = location.state.files.map((file) => ({
+          uid: file.fileId || file._id,
+          name: file.fileName || file.name,
+          status: "done",
+          url: `https://drive.google.com/file/d/${file.fileId || file._id}/view`,
+          isExisting: true,
+          fileId: file.fileId || file._id,
+          fileName: file.fileName || file.name,
+        }));
+        setFileList(mappedFiles);
+        form.setFieldsValue({ files: mappedFiles });
+      }
+    }
+  }, [location.state, form, signers]);
 
   useEffect(() => {
     const token = Cookies.get("accessToken");
@@ -105,11 +142,13 @@ const DocumentForm = () => {
           numOfPages: 1,
           assignedToUsers: [],
           executors: [],
-          departments: [],
+          departments: form.getFieldValue("departments") || [],
           unit: null,
-          docType: "sent",
+          docType: form.getFieldValue("docType") || "sent",
         });
-        setFileList([]);
+        if (!location?.state?.files) {
+          setFileList([]);
+        }
         setNextDocNum(null);
         setNextDocNumReceived(null);
       } catch (error) {
@@ -122,16 +161,23 @@ const DocumentForm = () => {
     fetchData();
   }, [navigate, form]);
 
-  useEffect(() => {
-    if (docTypeWatch === "received") {
-      // Văn bản đến: không chọn người ký ở FE, BE sẽ tự gán
-      form.setFieldsValue({ signer: undefined, position: "", departments: [] });
-      setDisplayPositionName("Sẽ được tự động gán bởi hệ thống");
-    } else if (docTypeWatch === "sent") {
-      form.setFieldsValue({ signer: undefined, position: "", departments: [] });
-      setDisplayPositionName("");
-    }
-  }, [docTypeWatch, form, signers]);
+    const prevDocType = useRef(docTypeWatch);
+
+    useEffect(() => {
+      if (prevDocType.current !== docTypeWatch) {
+        const wasUndefined = prevDocType.current === undefined;
+        prevDocType.current = docTypeWatch;
+        if (docTypeWatch === "received") {
+          form.setFieldsValue({ signer: undefined, position: "", departments: [] });
+          setDisplayPositionName("Sẽ được tự động gán bởi hệ thống");
+        } else if (docTypeWatch === "sent") {
+          if (!wasUndefined) {
+            form.setFieldsValue({ signer: undefined, position: "", departments: [] });
+          }
+          setDisplayPositionName("");
+        }
+      }
+    }, [docTypeWatch, form]);
 
   const debouncedGetNextDocNum = debounce(async () => {
     const selectedDocType = form.getFieldValue("docType");
@@ -217,7 +263,6 @@ const DocumentForm = () => {
       let finalDepartments = values.departments;
 
       if (values.docType === "received") {
-        // Văn bản đến: không gửi signer/position; BE sẽ tự gán theo cấu hình
         finalSignerId = undefined;
         finalPositionId = "";
         finalDepartments = [];
@@ -232,7 +277,6 @@ const DocumentForm = () => {
         form.setFieldsValue({ position: finalPositionId, departments: finalDepartments });
       }
 
-      // Chỉ validate người ký/đơn vị khi văn bản đi
       if (values.docType !== "received") {
         if (!finalSignerId) {
           throw new Error("ID người ký không hợp lệ hoặc không được cung cấp.");
@@ -242,14 +286,12 @@ const DocumentForm = () => {
         }
       }
 
-      // Format executors
       const executors = (values.executors || []).map((e) => {
         const [type, id] = e.split("|");
         if (!type || !id) throw new Error(`Định dạng không hợp lệ cho đơn vị nhận: ${e}`);
         return { executorId: id, executorType: type };
       });
 
-      // Format assignedToUsers with status and onTime
       const assignedToUsers = (values.assignedToUsers || []).map((userId) => {
         if (!userId) throw new Error(`ID người nhận không hợp lệ: ${userId}`);
         return {
@@ -261,7 +303,6 @@ const DocumentForm = () => {
         };
       });
 
-      // Append form data
       formData.append("sentBy", currentUserId);
       formData.append("docType", values.docType);
       formData.append("docVariant", values.docVariant);
@@ -289,17 +330,26 @@ const DocumentForm = () => {
         if (!values.unit) throw new Error("Cơ quan ban hành là bắt buộc đối với văn bản đến.");
         formData.append("unit", values.unit);
         if (values.receivedAt) formData.append("receivedAt", values.receivedAt.format("YYYY-MM-DD"));
-        // Gửi position để BE dùng xác định signer tự động (theo cấu hình ở BE)
-        formData.append("position", "680eb8eaf148d83d0fd5344a");
+        formData.append("position", "67e0df448459c5b00584f922");
       }
 
-      // Append files with original filename for backend parsers
+      const extractedExistingFiles = [];
       fileList.forEach((file) => {
         if (file.originFileObj) {
           const filename = file.name || file.originFileObj.name || "upload";
-          formData.append("files", file.originFileObj, filename);
+          formData.append("files", file.originFileObj, formatFileName(filename));
+        } else if (file.isExisting) {
+          extractedExistingFiles.push({ fileId: file.fileId, fileName: file.fileName });
         }
       });
+
+      if (extractedExistingFiles.length > 0) {
+        formData.append("existingFiles", JSON.stringify(extractedExistingFiles));
+      }
+
+      if (location.state && location.state.repliedDocId) {
+        formData.append("repliedDocId", location.state.repliedDocId);
+      }
 
       await uploadDocument(formData);
 
@@ -445,7 +495,6 @@ const DocumentForm = () => {
                       name="deadlineDay" 
                       label="Hạn xử lý"
                       getValueFromEvent={(date) => {
-                        // Khi clear, date sẽ là null, giữ nguyên null để form biết đã clear
                         return date || null;
                       }}
                     >
@@ -455,12 +504,10 @@ const DocumentForm = () => {
                         format="DD/MM/YYYY"
                         allowClear
                         onChange={(date) => {
-                          // Force update form khi clear
                           if (!date) {
                             form.setFieldValue("deadlineDay", null);
                           }
                         }}
-                        // disabledDate={(current) => current && current < dayjs().startOf("day")}
                       />
                     </Form.Item>
                   </Col>
@@ -740,17 +787,36 @@ const DocumentForm = () => {
                         return e && e.fileList;
                       }}
                     >
-                      <Upload
+                      <Upload.Dragger
                         multiple
                         onChange={handleFileChange}
                         beforeUpload={() => false}
-                        listType="picture"
                         fileList={fileList}
+                        itemRender={(originNode, file, fileList, actions) => (
+                          <div className="flex items-center justify-between p-2 mt-2 bg-gray-50 border border-gray-200 rounded-md hover:bg-blue-50 transition-colors">
+                            <div className="flex items-center space-x-2 overflow-hidden">
+                              <span className="text-blue-500 text-lg">📄</span>
+                              <span className="text-sm text-gray-700 truncate block" title={file.name || file.fileName}>
+                                {file.name || file.fileName}
+                              </span>
+                            </div>
+                            <span 
+                              className="text-red-500 cursor-pointer hover:text-red-700 font-bold px-2 text-lg" 
+                              onClick={actions.remove}
+                              title="Xóa"
+                            >
+                              ×
+                            </span>
+                          </div>
+                        )}
                       >
-                        <Button icon={<UploadOutlined />} className="w-full md:w-auto">
-                          Chọn hoặc kéo tệp vào đây
-                        </Button>
-                      </Upload>
+                        <p className="ant-upload-drag-icon">
+                          <InboxOutlined className="text-blue-500 text-3xl" />
+                        </p>
+                        <p className="ant-upload-text text-gray-700 font-medium mt-2">
+                          Nhấp hoặc kéo thả tệp vào đây
+                        </p>
+                      </Upload.Dragger>
                     </Form.Item>
                   </Col>
                 </Row>

@@ -1,3 +1,4 @@
+import { formatFileName } from "../utils/formatFileName";
 import axiosInstance from './axiosInstance';
 
 // Lấy danh sách tất cả văn bản trình ký (cho manager)
@@ -292,5 +293,46 @@ export const getInReviewReplyCount = async (reviewerId) => {
   } catch (error) {
     console.error("Error in getInReviewReplyCount API call:", error.response?.data || error.message || error);
     return 0;
+  }
+};
+
+export const signFile = async (fileId, fileName) => {
+  try {
+    // 1. Tải file gốc từ Backend
+    const downloadResponse = await axiosInstance.get(`/replyDoc/download/${fileId}`, {
+      responseType: 'blob'
+    });
+    
+    // 2. Tạo FormData để gửi sang Local Service
+    const formData = new FormData();
+    const blob = new Blob([downloadResponse.data], { type: downloadResponse.headers['content-type'] });
+    const originalFile = new File([blob], formatFileName(fileName), { type: downloadResponse.headers['content-type'] });
+    formData.append('file', originalFile);
+
+    // 3. Gửi file tới Local Service (đang chạy ở cổng 8989)
+    // Dùng fetch thay vì axiosInstance vì không cần gửi token lên máy local
+    const localServiceUrl = 'http://localhost:8989/sign';
+    const localResponse = await fetch(localServiceUrl, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!localResponse.ok) {
+        throw new Error("Không thể kết nối với phần mềm Ký số (Local Service). Hãy chắc chắn bạn đã bật nó.");
+    }
+
+    // 4. Nhận file đã ký trả về
+    const signedBlob = await localResponse.blob();
+    const signedFile = new File([signedBlob], fileName, { type: signedBlob.type || 'application/pdf' });
+
+    return {
+      isSuccess: true,
+      message: "Ký số thành công",
+      file: signedFile
+    };
+
+  } catch (error) {
+    console.error("Lỗi khi ký số:", error.response?.data || error.message);
+    throw new Error(error.message || "Lỗi khi thực hiện ký số!");
   }
 };

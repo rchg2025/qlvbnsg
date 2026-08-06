@@ -16,7 +16,7 @@ import {
   Tooltip,
 } from "antd";
 import axiosInstance from "../../api/axiosInstance";
-import { EyeOutlined, EditOutlined, DeleteOutlined, CheckOutlined, CloseOutlined, SearchOutlined, ReloadOutlined, FileExcelOutlined, SendOutlined } from "@ant-design/icons";
+import { EyeOutlined, EditOutlined, DeleteOutlined, CheckOutlined, CloseOutlined, SearchOutlined, ReloadOutlined, FileExcelOutlined, SendOutlined, FileDoneOutlined, DownloadOutlined } from "@ant-design/icons";
 import Cookies from "js-cookie";
 import { jwtDecode } from "jwt-decode";
 import moment from "moment";
@@ -27,7 +27,9 @@ import {
   deleteRepliedDoc,
   searchRepliedDocs,
   sentToReview,
+  fetchAllRepliedDocs,
 } from "../../api/repliedDocApi";
+import { formatFileName } from "../../utils/formatFileName";
 import { getAllUsers, getUsersByDepartmentCode } from "../../api/auth";
 import { getAllDocVariants } from "../../api/docVariantApi";
 import { getAllDocuments, getDocumentById } from "../../api/documentApi";
@@ -47,6 +49,7 @@ const RepliedDocList = () => {
   });
   const [userRole, setUserRole] = useState(null);
   const [userId, setUserId] = useState(null);
+  const [userEmail, setUserEmail] = useState("");
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [users, setUsers] = useState([]);
@@ -77,22 +80,26 @@ const RepliedDocList = () => {
   const navigate = useNavigate();
 
   const isAdmin = useCallback(() => userRole === "admin" || userRole === "manager", [userRole]);
+  const isSuperAdmin = useCallback(() => userRole === "admin", [userRole]);
 
   const fetchRepliedDocs = useCallback(async (page = 1, pageSize = 10) => {
     if (!userRole || !userId) return;
     setLoading(true);
+    console.log("fetchRepliedDocs triggered:", { userEmail, userRole, userId, superAdmin: isSuperAdmin() });
     try {
       // Giới hạn tối đa 50 văn bản mới nhất
       const maxPageSize = Math.min(pageSize, 50);
       let response;
-      if (isAdmin()) {
+      if (isSuperAdmin()) {
+        response = await fetchAllRepliedDocs();
+      } else if (isAdmin()) {
         response = await getPendingRepliesListForRecipient(userId, page, maxPageSize);
       } else {
         response = await fetchRepliedDocsByUserId(userId, page, maxPageSize);
       }
       const docs = response.data || [];
-      // Giới hạn total không vượt quá 50
-      const total = Math.min(response.total || 0, 50);
+      // Giới hạn total không vượt quá 50 (hoặc lấy toàn bộ nếu là superAdmin)
+      const total = isSuperAdmin() ? (response.total || 0) : Math.min(response.total || 0, 50);
       
       setAllRepliedDocs(docs);
       setPagination((prev) => ({ 
@@ -109,7 +116,7 @@ const RepliedDocList = () => {
     } finally {
       setLoading(false);
     }
-  }, [userRole, userId, isAdmin]);
+  }, [userRole, userId, isAdmin, isSuperAdmin]);
 
   const fetchAdditionalData = useCallback(async () => {
     setAdditionalDataLoading(true);
@@ -119,9 +126,9 @@ const RepliedDocList = () => {
         getAllDocVariants(),
         getAllDocuments(userId),
       ]);
-      setUsers(usersRes.users || []);
-      setDocVariants(docVariantsRes || []);
-      setDocuments(documentsRes.data || []);
+      setUsers(Array.isArray(usersRes) ? usersRes : (usersRes.users || []));
+      setDocVariants(Array.isArray(docVariantsRes) ? docVariantsRes : (docVariantsRes.data || []));
+      setDocuments(Array.isArray(documentsRes) ? documentsRes : (documentsRes.data || []));
     } catch (error) {
       console.error("Error fetching additional data:", error);
       message.error("Không thể tải dữ liệu bổ sung!");
@@ -137,6 +144,7 @@ const RepliedDocList = () => {
         const decodedToken = jwtDecode(token);
         setUserRole(decodedToken.role);
         setUserId(decodedToken.userId);
+        // Do not rely on email from token as it may not exist
       } catch (error) {
         console.error("Invalid token:", error);
         message.error("Token không hợp lệ. Vui lòng đăng nhập lại.");
@@ -149,9 +157,16 @@ const RepliedDocList = () => {
   useEffect(() => {
     if (userRole && userId) {
       fetchRepliedDocs(1, pagination.pageSize);
+    }
+  }, [userRole, userId, fetchRepliedDocs, pagination.pageSize]);
+
+  useEffect(() => {
+    if (userId) {
       fetchAdditionalData();
     }
-  }, [userRole, userId, fetchRepliedDocs, fetchAdditionalData, pagination.pageSize]);
+  }, [userId, fetchAdditionalData]);
+
+  // Removed userEmail fetch logic as it's no longer needed
 
   // Bổ sung: Tải các văn bản gốc bị thiếu theo ID để hiển thị "Số/Ký hiệu"
   useEffect(() => {
@@ -258,6 +273,24 @@ const RepliedDocList = () => {
     [getOriginalDocDetails, getDocCodeAndNum]
   );
 
+  const handleIssueDocument = useCallback(async (record) => {
+    try {
+      if (record.status !== "approved") {
+        await processRepliedDoc(record._id, "approve");
+        message.success("Đã chuyển trạng thái văn bản thành Đã chấp nhận");
+      }
+      navigate("/documents/create", {
+        state: {
+          shortDescription: record.shortDescription,
+          files: record.files,
+          signer: record.reviewer?._id || record.reviewer,
+          repliedDocId: record._id,
+        },
+      });
+    } catch (error) {
+      message.error(error.message || "Lỗi khi cập nhật trạng thái văn bản");
+    }
+  }, [navigate]);
 
   const handleSearch = useCallback(async () => {
     if (!userRole || !userId) return;
@@ -577,28 +610,43 @@ const RepliedDocList = () => {
       },
       {
         title: "Tệp đính kèm",
-        dataIndex: "files",
         key: "files",
-        render: (files) =>
-          files && files.length > 0 ? (
-            <ul style={{ paddingLeft: 0, listStyle: "none", margin: 0 }}>
-              {files.map((file) => (
-                <li key={file.fileId}>
-                  <a
-                    href={`https://drive.google.com/file/d/${file.fileId}/view`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline"
-                  >
-                    {file.fileName}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            "Không có"
-          ),
         width: 200,
+        render: (text, record) => {
+          if (!record.files || !Array.isArray(record.files) || record.files.length === 0) {
+            return <span className="text-gray-400">Không có</span>;
+          }
+          return (
+            <div className="flex flex-col gap-2 mt-2">
+              {record.files.slice(0, 2).map((file, index) => {
+                const rawName = formatFileName(file.fileName || file.name || "File");
+                return (
+                  <div key={file.fileId || file._id || index} className="flex items-center p-1.5 bg-gray-50 border border-gray-200 rounded-md hover:bg-blue-50 transition-colors" style={{ maxWidth: "200px" }}>
+                    <div className="flex-1 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                      <a
+                        href={`https://drive.google.com/file/d/${file.fileId || file._id}/view`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-medium text-blue-600 hover:underline block truncate"
+                        title={rawName}
+                      >
+                        {rawName}
+                      </a>
+                      <span className="text-[10px] text-gray-500 block truncate" title={`${file.uploadDate || file.uploadedAt ? moment(file.uploadDate || file.uploadedAt).format("DD/MM/YYYY HH:mm") : ""} - ${file.uploadedByName || "Người trình ký"}`}>
+                        {file.uploadDate || file.uploadedAt ? moment(file.uploadDate || file.uploadedAt).format("DD/MM/YYYY HH:mm") : ""} - {file.uploadedByName || "Người trình ký"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+              {record.files.length > 2 && (
+                <span className="text-xs text-gray-500 ml-1">
+                  +{record.files.length - 2} file khác
+                </span>
+              )}
+            </div>
+          );
+        },
       },
       {
         title: "Thao tác",
@@ -691,6 +739,22 @@ const RepliedDocList = () => {
                 </Button>
               </Tooltip>
             )}
+            {(record.status === "approvedByReviewer" || record.status === "approved") && (userRole === "manager" || userRole === "admin") && !record.isIssued && (
+              <Tooltip title="Ban hành VB">
+                <Button
+                  size="small"
+                  type="default"
+                  icon={<FileDoneOutlined />}
+                  className="rounded-md text-xs border-blue-500 text-blue-500 hover:bg-blue-50 mt-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleIssueDocument(record);
+                  }}
+                >
+                  <span className="hidden sm:inline text-xs">Ban hành VB</span>
+                </Button>
+              </Tooltip>
+            )}
           </div>
         ),
       },
@@ -712,6 +776,7 @@ const RepliedDocList = () => {
       handleOpenDeleteModal,
       isAdmin,
       handleOpenReviewerModal,
+      handleIssueDocument,
     ]
   );
 
@@ -1022,19 +1087,70 @@ const RepliedDocList = () => {
             <Card size="small" className="border-gray-200 rounded-lg">
               <h3 className="font-semibold text-gray-700 mb-2 border-b pb-1">📎 Tệp đính kèm</h3>
               {selectedDoc.files && selectedDoc.files.length > 0 ? (
-                <ul className="list-disc pl-5 text-blue-600">
-                  {selectedDoc.files.map((file) => (
-                    <li key={file.fileId} className="hover:underline">
-                      <a
-                        href={`https://drive.google.com/file/d/${file.fileId}/view`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {file.fileName}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
+                <Table
+                  dataSource={selectedDoc.files}
+                  pagination={false}
+                  rowKey="fileId"
+                  size="small"
+                  bordered
+                  columns={[
+                    {
+                      title: 'STT',
+                      key: 'stt',
+                      render: (text, record, index) => index + 1,
+                      width: 60,
+                      align: 'center',
+                    },
+                    {
+                      title: 'Tên tài liệu',
+                      key: 'fileName',
+                      render: (text, record) => {
+                        const rawName = record.fileName || record.name || "File";
+                        return (
+                          <a
+                            href={`https://drive.google.com/file/d/${record.fileId}/view`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            {rawName}
+                          </a>
+                        );
+                      }
+                    },
+                    {
+                      title: 'Thao tác',
+                      key: 'action',
+                      width: 150,
+                      align: 'center',
+                      render: (text, record) => {
+                        return (
+                          <div className="flex gap-2 justify-center">
+                            <Button 
+                              type="text" 
+                              icon={<EyeOutlined className="text-green-600 text-lg" />} 
+                              title="Xem file" 
+                              onClick={() => window.open(`https://drive.google.com/file/d/${record.fileId}/view`)}
+                            />
+                            <Button 
+                              type="text" 
+                              icon={<DownloadOutlined className="text-blue-500 text-lg" />} 
+                              title="Tải xuống"
+                              onClick={() => {
+                                const link = document.createElement('a');
+                                link.href = `https://drive.google.com/uc?export=download&id=${record.fileId}`;
+                                link.setAttribute('download', '');
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                            />
+                          </div>
+                        );
+                      }
+                    }
+                  ]}
+                />
               ) : (
                 <p>Không có tệp đính kèm.</p>
               )}

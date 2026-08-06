@@ -3,7 +3,7 @@ const path = require('path');
 const { MongoClient, ObjectId } = require('mongodb');
 
 const uri = "mongodb+srv://Vercel-Admin-atlas-fulvous-notebook:S3BiFzbWXaZTCTns@atlas-fulvous-notebook.cy9ar7d.mongodb.net/NSG_Database?retryWrites=true&w=majority";
-const uploadDir = 'C:\\Users\\nvluy\\.gemini\\antigravity\\brain\\c65d9d35-9f70-4191-b6ef-702321059457\\.user_uploaded';
+const uploadDir = 'C:\\Users\\nvluy\\Studio\\Du an Nodejs\\qlvb\\Database';
 
 function transformDocument(doc) {
     if (doc === null || typeof doc !== 'object') {
@@ -54,19 +54,12 @@ async function run() {
 
             const transformedData = data.map(transformDocument);
             
-            let collectionName = '';
-            const sample = data[0] || {};
-            let uniqueField = '_id';
-
-            if (sample.unitCode) { collectionName = 'units'; uniqueField = 'unitCode'; }
-            else if (sample.replyBy !== undefined && sample.status !== undefined) { collectionName = 'replieddocs'; uniqueField = '_id'; }
-            else if (sample.email && sample.password) { collectionName = 'users'; uniqueField = 'email'; }
-            else if (sample.departmentCode) { collectionName = 'departments'; uniqueField = 'departmentCode'; }
-            else if (sample.docVariantName) { collectionName = 'docvariants'; uniqueField = 'docVariantName'; }
-            else {
+            let collectionName = file.split('.')[1];
+            if (!collectionName) {
                 console.log(`Unknown collection for file ${file}`);
                 continue;
             }
+            let uniqueField = '_id';
             
             console.log(`Inserting/Updating ${transformedData.length} records into ${collectionName} from ${file} using ${uniqueField}`);
             

@@ -3,7 +3,8 @@ import { createContext, useState, useEffect, useCallback, useContext } from "rea
 import Cookies from "js-cookie";
 import { jwtDecode } from "jwt-decode";
 import { getDocumentsByUserAndType } from "../api/documentApi";
-import {  getStaffPendingReplyCount } from "../api/repliedDocApi";
+import { getStaffPendingReplyCount } from "../api/repliedDocApi";
+import { getTasks } from "../api/taskApi";
 
 const NotificationContext = createContext();
 
@@ -23,6 +24,7 @@ export const NotificationProvider = ({ children }) => {
   const [unreadDocCount, setUnreadDocCount] = useState(0);
   const [pendingReplyCount, setPendingReplyCount] = useState(0);
   const [myPendingReplyCount, setMyPendingReplyCount] = useState(0);
+  const [todoTaskCount, setTodoTaskCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [userInfo, setUserInfo] = useState({ role: null, userId: null });
 
@@ -44,6 +46,7 @@ export const NotificationProvider = ({ children }) => {
     let fetchedUnreadCount = 0;
     let fetchedPendingCount = 0;
     let fetchedMyPendingCount = 0;
+    let fetchedTodoTaskCount = 0;
 
     try {
     
@@ -59,17 +62,29 @@ export const NotificationProvider = ({ children }) => {
 
         // Đếm pending + rejected cho staff
         fetchedMyPendingCount = await getStaffPendingReplyCount(userId);
+        
+        // Lấy số lượng task TODO
+        try {
+          const tasksRes = await getTasks(userId);
+          if (tasksRes && tasksRes.success) {
+            fetchedTodoTaskCount = tasksRes.data.filter(t => t.status === 'TODO').length;
+          }
+        } catch (e) {
+          console.error("Error fetching tasks for context:", e);
+        }
     
       
 
       setUnreadDocCount(fetchedUnreadCount);
       setPendingReplyCount(fetchedPendingCount);
       setMyPendingReplyCount(fetchedMyPendingCount);
+      setTodoTaskCount(fetchedTodoTaskCount);
     } catch (error) {
       console.error("Error fetching notification counts:", error);
       setUnreadDocCount(0);
       setPendingReplyCount(0);
       setMyPendingReplyCount(0);
+      setTodoTaskCount(0);
     } finally {
       setIsLoading(false);
     }
@@ -90,6 +105,7 @@ export const NotificationProvider = ({ children }) => {
       setUnreadDocCount(0);
       setPendingReplyCount(0);
       setMyPendingReplyCount(0);
+      setTodoTaskCount(0);
     }
   }, [userInfo, fetchNotificationCounts]);
 
@@ -97,6 +113,7 @@ export const NotificationProvider = ({ children }) => {
     unreadDocCount,
     pendingReplyCount,
     myPendingReplyCount,
+    todoTaskCount,
     isLoadingCounts: isLoading,
     refetchNotificationCounts: fetchNotificationCounts,
     userRole: userInfo.role,

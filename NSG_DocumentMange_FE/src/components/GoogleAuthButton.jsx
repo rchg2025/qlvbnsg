@@ -50,6 +50,19 @@ const GoogleAuthButton = () => {
     }
   };
 
+  const handleRevokeAuth = async () => {
+    try {
+      setLoading(true);
+      await googleApi.revokeGoogleAuth();
+      setGoogleConnected(false);
+      message.success('Đã hủy ủy quyền Google Calendar thành công!');
+    } catch (error) {
+      message.error('Lỗi khi hủy ủy quyền: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Debug: hiển thị trạng thái hiện tại
   console.log('Current state:', { checkingAuth, googleConnected });
   
@@ -73,14 +86,23 @@ const GoogleAuthButton = () => {
   if (googleConnected) {
     console.log('Google connected - showing authorized status');
     return (
-      <Button
-        type="default"
-        icon={<GoogleOutlined />}
-        disabled
-        className="border-green-500 text-green-500 bg-green-50"
-      >
-        Đã ủy quyền Google Calendar
-      </Button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
+        <Button
+          type="default"
+          icon={<GoogleOutlined />}
+          disabled
+          className="border-green-500 text-green-500 bg-green-50"
+        >
+          Đã ủy quyền Google Calendar
+        </Button>
+        <Button
+          danger
+          onClick={handleRevokeAuth}
+          loading={loading}
+        >
+          Hủy ủy quyền
+        </Button>
+      </div>
     );
   }
 
