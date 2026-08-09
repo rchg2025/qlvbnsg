@@ -1,4 +1,5 @@
 import { formatFileName } from "../../utils/formatFileName";
+import { getDriveToken, uploadFileDirectlyToDrive } from "../../api/driveApi";
 import React, { useState, useEffect } from 'react';
 import { Modal, Form, Input, DatePicker, Select, Button, message, Segmented, Pagination, Upload, Row, Col, Card, Statistic, Table, Tag, Space, Tooltip, Timeline, Alert } from 'antd';
 import { UploadOutlined, ProfileOutlined, SyncOutlined, CheckCircleOutlined, FileTextOutlined, ExportOutlined, EditOutlined, EyeOutlined, HistoryOutlined } from '@ant-design/icons';
@@ -32,6 +33,7 @@ const SchedulePage = () => {
     const [isHistoryVisible, setIsHistoryVisible] = useState(false);
     const [historyPage, setHistoryPage] = useState(1);
     const [selectedTask, setSelectedTask] = useState(null);
+    const [isSaving, setIsSaving] = useState(false);
     const [form] = Form.useForm();
 
     const handleViewDetails = (task) => {
@@ -131,6 +133,7 @@ const SchedulePage = () => {
     const handleOk = async () => {
         try {
             const values = await form.validateFields();
+            setIsSaving(true);
             const formData = new FormData();
             formData.append("title", values.title);
             if (values.description) formData.append("description", values.description);
@@ -142,12 +145,37 @@ const SchedulePage = () => {
             formData.append("priority", values.priority || 'NORMAL');
             if (!editingTask) formData.append("createdBy", userId);
 
+            const filesToUploadDirectly = [];
+
             fileList.forEach(file => {
                 if (file.originFileObj) {
-                    const filename = file.name || file.originFileObj.name || "upload";
-                    formData.append("files", file.originFileObj, formatFileName(filename));
+                    filesToUploadDirectly.push(file.originFileObj);
                 }
             });
+
+            const newlyUploadedFiles = [];
+            if (filesToUploadDirectly.length > 0) {
+                message.loading({ content: 'Đang tải tệp lên Google Drive...', key: 'uploading' });
+                try {
+                    const driveAuth = await getDriveToken();
+                    const accessToken = driveAuth.accessToken;
+                    const folderId = driveAuth.folderId;
+
+                    for (const fileObj of filesToUploadDirectly) {
+                        const uploadedFile = await uploadFileDirectlyToDrive(fileObj, accessToken, folderId);
+                        newlyUploadedFiles.push(uploadedFile);
+                    }
+                    message.success({ content: 'Tải tệp lên Google Drive thành công!', key: 'uploading', duration: 2 });
+                } catch (error) {
+                    message.error({ content: `Lỗi tải tệp: ${error.message}`, key: 'uploading', duration: 4 });
+                    setIsSaving(false);
+                    return; // Stop the process
+                }
+            }
+
+            if (newlyUploadedFiles.length > 0) {
+                formData.append("uploadedFiles", JSON.stringify(newlyUploadedFiles));
+            }
 
             if (editingTask && editingTask.files) {
                 // Giữ lại các file cũ
@@ -166,6 +194,16 @@ const SchedulePage = () => {
             loadTasks();
         } catch (error) {
             console.error(error);
+            if (error.name !== 'ValidationError' && error.errorFields === undefined) {
+                // If it's an API error, not a form validation error
+                if (error.response?.status === 413) {
+                    message.error("Lỗi: Tệp đính kèm quá lớn (vượt giới hạn 4.5MB của máy chủ).");
+                } else {
+                    message.error("Có lỗi xảy ra: " + (error.response?.data?.message || error.message));
+                }
+            }
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -381,6 +419,7 @@ const SchedulePage = () => {
                 rowKey="_id"
                 pagination={{ pageSize: 20 }}
                 className="mt-4 shadow-sm border border-gray-100"
+                scroll={{ x: 'max-content' }}
                 onRow={(record) => ({
                     onClick: () => handleViewDetails(record),
                     style: { cursor: 'pointer' }
@@ -630,10 +669,10 @@ const SchedulePage = () => {
 
     return (
         <div className="bg-white p-6 rounded-lg shadow min-h-screen">
-            <div className="flex justify-between items-center mb-4 border-b pb-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 border-b pb-4 gap-4">
                 <h2 className="text-2xl font-bold text-gray-800">Công việc</h2>
                 
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
                     <Segmented 
                         options={['Hệ thống', 'Google']} 
                         value={viewMode}
@@ -735,9 +774,9 @@ const SchedulePage = () => {
                 width={800}
                 onCancel={() => setIsModalVisible(false)}
                 footer={[
-                    editingTask && <Button key="delete" danger onClick={handleDelete}>Xóa</Button>,
-                    <Button key="cancel" onClick={() => setIsModalVisible(false)}>Hủy</Button>,
-                    <Button key="submit" type="primary" onClick={handleOk}>Lưu</Button>
+                    editingTask && <Button key="delete" danger onClick={handleDelete} disabled={isSaving}>Xóa</Button>,
+                    <Button key="cancel" onClick={() => setIsModalVisible(false)} disabled={isSaving}>Hủy</Button>,
+                    <Button key="submit" type="primary" onClick={handleOk} loading={isSaving}>{isSaving ? "Đang lưu..." : "Lưu"}</Button>
                 ]}
             >
                 <Form form={form} layout="vertical">
