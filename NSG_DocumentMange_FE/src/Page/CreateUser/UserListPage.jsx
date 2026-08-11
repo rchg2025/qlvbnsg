@@ -354,35 +354,36 @@ const UserListPage = () => {
     {
       title: "Hành Động",
       key: "action",
+      className: "action-col", fixed: "right",
       render: (_, record) =>
         hasPermission() && (
-          <Space size="small">
+          <div className="flex flex-wrap gap-2 justify-center">
             <Tooltip title="Chỉnh sửa thông tin">
-              <Button type="primary" icon={<EditOutlined />} onClick={() => handleEdit(record)} className="text-xs">
+              <Button type="primary" icon={<EditOutlined />} onClick={() => handleEdit(record)} className="text-xs rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center">
                 <span className="hidden sm:inline text-xs">Sửa</span>
               </Button>
             </Tooltip>
             {record.role ? (
               <Tooltip title="Vô hiệu hóa tài khoản">
-                <Button type="default" danger icon={<UserDeleteOutlined />} onClick={() => handleBan(record._id)} className="text-xs">
-                  <span className="hidden sm:inline text-xs">Vô hiệu hóa tài khoản</span>
+                <Button type="default" danger icon={<UserDeleteOutlined />} onClick={() => handleBan(record._id)} className="text-xs rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center">
+                  <span className="hidden sm:inline text-xs">Khóa</span>
                 </Button>
               </Tooltip>
             ) : (
               <Tooltip title="Khôi phục tài khoản">
-                <Button type="default" icon={<UserAddOutlined />} onClick={() => handleUnban(record)} className="text-xs">
-                  <span className="hidden sm:inline text-xs">Khôi phục tài khoản</span>
+                <Button type="default" icon={<UserAddOutlined />} onClick={() => handleUnban(record)} className="text-xs rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center">
+                  <span className="hidden sm:inline text-xs">Khôi phục</span>
                 </Button>
               </Tooltip>
             )}
             {currentUserRole === "admin" && (
               <Tooltip title="Xóa tài khoản">
-                <Button type="default" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record._id)} className="text-xs">
+                <Button type="default" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record._id)} className="text-xs rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center">
                   <span className="hidden sm:inline text-xs">Xóa</span>
                 </Button>
               </Tooltip>
             )}
-          </Space>
+          </div>
         ),
     },
   ];
@@ -508,7 +509,7 @@ const UserListPage = () => {
               }));
             },
           }}
-          scroll={{ x: 600 }}
+          scroll={{ x: 'max-content' }}
           size="small"
         />
       )}

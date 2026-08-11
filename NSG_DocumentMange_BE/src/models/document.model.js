@@ -142,9 +142,16 @@ const documentSchema = new mongoose.Schema(
   {
     timestamps: true,
     indexes: [
-      { key: { createdAt: 1 } }
+      { key: { createdAt: 1 } },
+      { key: { "assignedToUsers.userId": 1 } },
+      { key: { sentBy: 1 } }
     ]
   }
+);
+
+documentSchema.index(
+  { shortDescription: "text", docCode: "text" },
+  { name: "TextIndex", default_language: "none" }
 );
 
 documentSchema.pre('save', async function (next) {

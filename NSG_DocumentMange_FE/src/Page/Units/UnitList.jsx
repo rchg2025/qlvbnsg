@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 import { useEffect, useState } from "react";
-import { Table, Button, Modal, Form, Input, message, Popconfirm, Spin, Card, Space } from "antd";
+import { Table, Button, Modal, Form, Input, message, Popconfirm, Spin, Card, Space, Tooltip } from "antd";
 import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import { getAllUnits, createUnit, updateUnit, deleteUnit } from "../../api/unitApi";
 import Cookies from "js-cookie";
@@ -159,27 +159,32 @@ const UnitList = () => {
     {
       title: "Thao tác",
       key: "action",
-      width: 120,
+      className: "action-col", fixed: "right",
       render: (text, record) =>
         hasPermission() && (
-          <Space size="middle">
-            <Button icon={<EditOutlined />} onClick={() => handleEdit(record)} size="small">
-              Sửa
-            </Button>
+          <div className="flex flex-wrap gap-2 justify-center">
+            <Tooltip title="Sửa">
+              <Button icon={<EditOutlined />} onClick={() => handleEdit(record)} size="small" className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center">
+                <span className="hidden sm:inline text-xs">Sửa</span>
+              </Button>
+            </Tooltip>
             {hasDeletePermission() && (
               <Popconfirm
                 title="Bạn chắc chắn muốn xóa?"
                 onConfirm={() => handleDelete(record._id)}
                 okText="Xóa"
                 cancelText="Hủy"
-                okButtonProps={{ danger: true }}
+                okButtonProps={{ danger: true, size: "small" }}
+                cancelButtonProps={{ size: "small" }}
               >
-                <Button icon={<DeleteOutlined />} danger size="small">
-                  Xóa
-                </Button>
+                <Tooltip title="Xóa">
+                  <Button icon={<DeleteOutlined />} danger size="small" className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center">
+                    <span className="hidden sm:inline text-xs">Xóa</span>
+                  </Button>
+                </Tooltip>
               </Popconfirm>
             )}
-          </Space>
+          </div>
         ),
     },
   ];

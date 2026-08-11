@@ -11,6 +11,7 @@ import {
   Select,
   DatePicker,
   InputNumber,
+  Tooltip,
 } from "antd";
 import {
   getAllDocuments as getAllDocumentsApi,
@@ -731,20 +732,23 @@ const ReportPage = () => {
     {
       title: "Thao tác",
       key: "action",
-      fixed: "right",
+      className: "action-col", fixed: "right",
       render: (text, record) => (
-        <div className="flex flex-col gap-2">
-          <Button
-            type="primary"
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleRowClick(record);
-            }}
-            className="w-full rounded-md"
-          >
-            Xem chi tiết
-          </Button>
+        <div className="flex flex-wrap gap-2 justify-center">
+          <Tooltip title="Xem chi tiết">
+            <Button
+              type="primary"
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRowClick(record);
+              }}
+              className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center"
+            >
+              <span className="hidden sm:inline text-xs">Xem chi tiết</span>
+            </Button>
+          </Tooltip>
         </div>
       ),
       width: 150,

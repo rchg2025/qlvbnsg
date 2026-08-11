@@ -32,10 +32,22 @@ const triggerDocumentNotifications = async (document) => {
 
         // 2. Create internal Task and sync Google Calendar if deadline is present
         if (document.deadlineDay) {
-            let taskUsers = [...uniqueUsers];
-            if (taskUsers.length === 0 && senderUser) {
-                taskUsers.push(senderUser);
+            let executorUserIds = [];
+            if (document.executors && document.executors.length > 0) {
+                for (const exec of document.executors) {
+                    if (exec.executorType === 'User') {
+                        executorUserIds.push(exec.executorId.toString());
+                    } else if (exec.executorType === 'Department') {
+                        const deptUsers = await User.find({ department: exec.executorId, role: { $ne: null } }).select('_id');
+                        deptUsers.forEach(u => executorUserIds.push(u._id.toString()));
+                    }
+                }
             }
+            
+            // Lọc ra những người chủ trì (executors)
+            let taskUsers = uniqueUsers.filter(u => executorUserIds.includes(u._id.toString()));
+            
+
             if (taskUsers.length > 0) {
                 await createTasksAndSyncGoogleCalendar(document, taskUsers);
             }
@@ -141,11 +153,21 @@ const syncCalendarForDocument = async (document) => {
         const uniqueUsers = Array.from(new Set(targetUsers.map(u => u._id.toString())))
             .map(id => targetUsers.find(u => u._id.toString() === id));
 
-        let taskUsers = [...uniqueUsers];
-        if (taskUsers.length === 0 && (document.sentBy || document.sender)) {
-            const senderUser = await User.findById(document.sentBy || document.sender);
-            if (senderUser) taskUsers.push(senderUser);
+        let taskUsers = [];
+        let executorUserIds = [];
+        if (document.executors && document.executors.length > 0) {
+            for (const exec of document.executors) {
+                if (exec.executorType === 'User') {
+                    executorUserIds.push(exec.executorId.toString());
+                } else if (exec.executorType === 'Department') {
+                    const deptUsers = await User.find({ department: exec.executorId, role: { $ne: null } }).select('_id');
+                    deptUsers.forEach(u => executorUserIds.push(u._id.toString()));
+                }
+            }
         }
+        
+        taskUsers = uniqueUsers.filter(u => executorUserIds.includes(u._id.toString()));
+        
 
         if (taskUsers.length === 0) return;
 
@@ -165,7 +187,56 @@ const syncCalendarForDocument = async (document) => {
     }
 };
 
+const syncTaskToGoogleCalendar = async (task, users) => {
+    try {
+        const oauth2Client = new google.auth.OAuth2(
+            process.env.GOOGLE_CLIENT_ID,
+            process.env.GOOGLE_CLIENT_SECRET,
+            process.env.GOOGLE_REDIRECT_URI
+        );
+
+        for (const user of users) {
+            if (user.google && user.google.refreshToken) {
+                oauth2Client.setCredentials({
+                    access_token: user.google.accessToken,
+                    refresh_token: user.google.refreshToken,
+                    expiry_date: user.google.tokenExpiryDate 
+                        ? new Date(user.google.tokenExpiryDate).getTime() 
+                        : null,
+                });
+
+                let fileLinksText = "";
+                if (task.files && task.files.length > 0) {
+                    fileLinksText = "\n\nTệp đính kèm:\n" + task.files.map(f => `- ${f.fileName}: https://drive.google.com/file/d/${f.fileId}/view`).join("\n");
+                }
+
+                const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+                const event = {
+                    summary: task.title,
+                    description: (task.description || '') + `\n\nLink công việc: ${process.env.FE_URL || 'http://localhost:5173'}/schedule` + fileLinksText,
+                    start: {
+                        dateTime: new Date(task.startDate).toISOString(),
+                        timeZone: 'Asia/Ho_Chi_Minh',
+                    },
+                    end: {
+                        dateTime: new Date(task.endDate).toISOString(),
+                        timeZone: 'Asia/Ho_Chi_Minh',
+                    }
+                };
+
+                await calendar.events.insert({
+                    calendarId: 'primary',
+                    resource: event,
+                }).catch(err => console.error(`Error syncing task to calendar for user ${user.email}:`, err));
+            }
+        }
+    } catch (error) {
+        console.error("Error syncing manual task to Google Calendar:", error);
+    }
+};
+
 module.exports = {
     triggerDocumentNotifications,
-    syncCalendarForDocument
+    syncCalendarForDocument,
+    syncTaskToGoogleCalendar
 };

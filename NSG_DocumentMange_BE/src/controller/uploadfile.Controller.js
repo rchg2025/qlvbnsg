@@ -68,32 +68,39 @@ async function getOrCreateMonthFolder(drive) {
   const parentId = await getDriveFolderId();
   if (!parentId) throw new Error("Thư mục lưu trữ (Folder ID) chưa được cấu hình.");
 
-  const query = `name='${folderName}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
-  const response = await drive.files.list({
-    q: query,
-    fields: 'files(id, name)',
-    spaces: 'drive',
-    supportsAllDrives: true,
-    includeItemsFromAllDrives: true
-  });
+  try {
+    const query = `name='${folderName}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+    const response = await drive.files.list({
+      q: query,
+      fields: 'files(id, name)',
+      spaces: 'drive',
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true
+    });
 
-  if (response.data.files && response.data.files.length > 0) {
-    return response.data.files[0].id;
+    if (response.data.files && response.data.files.length > 0) {
+      return response.data.files[0].id;
+    }
+
+    const folderMetadata = {
+      name: folderName,
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: [parentId],
+    };
+
+    const createResponse = await drive.files.create({
+      resource: folderMetadata,
+      fields: 'id',
+      supportsAllDrives: true
+    });
+
+    return createResponse.data.id;
+  } catch (error) {
+    if (error.message && error.message.includes("File not found")) {
+      throw new Error(`Không tìm thấy thư mục gốc hoặc Service Account không có quyền truy cập vào ID: ${parentId}. Vui lòng kiểm tra Cấu hình Google Drive.`);
+    }
+    throw error;
   }
-
-  const folderMetadata = {
-    name: folderName,
-    mimeType: 'application/vnd.google-apps.folder',
-    parents: [parentId],
-  };
-
-  const createResponse = await drive.files.create({
-    resource: folderMetadata,
-    fields: 'id',
-    supportsAllDrives: true
-  });
-
-  return createResponse.data.id;
 }
 
 async function uploadToDrive(req, res) {
@@ -690,8 +697,7 @@ async function updateDocument(req, res) {
         return res.status(404).json({ message: "Document not found" });
       }
   
-      const auth = await authorize(); // Giả sử authorize() là hàm xác thực Google API
-      const drive = google.drive({ version: "v3", auth });
+
   
       const fieldsToUpdate = [
         "sentBy",
@@ -800,19 +806,8 @@ async function updateDocument(req, res) {
             return res.status(400).json({ message: "existingFiles must be an array" });
           }
   
-          // Xóa file khỏi Google Drive nếu không còn trong existingFiles
-          const currentFileIds = existingDocument.files.map(f => f.fileId);
-          const newFileIds = parsedExistingFiles.map(f => f.fileId);
-          const deletedFileIds = currentFileIds.filter(id => !newFileIds.includes(id));
-  
-          for (const fileId of deletedFileIds) {
-            try {
-              await drive.files.delete({ fileId });
-            } catch (error) {
-              console.error(`Failed to delete file ${fileId} from Google Drive:`, error);
-              // Có thể tiếp tục hoặc trả về lỗi tùy thuộc vào yêu cầu
-            }
-          }
+          // Chỉ xóa thông tin trên hệ thống, KHÔNG xóa file trên Google Drive
+          // theo yêu cầu mới nhất của người dùng.
   
           // Cập nhật danh sách file cũ
           updatedFiles = parsedExistingFiles.map(file => ({
@@ -828,6 +823,8 @@ async function updateDocument(req, res) {
   
       // Thêm file mới nếu có
       if (req.files && req.files.length > 0) {
+        const auth = await authorize();
+        const drive = google.drive({ version: "v3", auth });
         const monthFolderId = await getOrCreateMonthFolder(drive);
         for (const file of req.files) {
           const fileMetadata = {
@@ -844,6 +841,7 @@ async function updateDocument(req, res) {
             resource: fileMetadata,
             media: media,
             fields: "id, name, mimeType, size",
+            supportsAllDrives: true
           });
   
           updatedFiles.push({
@@ -870,7 +868,10 @@ async function updateDocument(req, res) {
     } catch (error) {
       console.error("Error in updateDocument:", error);
       if (!res.headersSent) {
-        res.status(500).json({ message: "Error updating document", error: error.message });
+        if (error.message && error.message.includes("File not found")) {
+           return res.status(500).json({ message: "Lỗi kết nối Google Drive: Không tìm thấy thư mục lưu trữ (có thể thư mục gốc đã bị xóa hoặc mất quyền chia sẻ). Vui lòng kiểm tra lại Cấu hình Google Drive.", error: error.message });
+        }
+        res.status(500).json({ message: "Lỗi cập nhật: " + error.message, error: error.message });
       }
     }
 }
@@ -948,7 +949,8 @@ const getDocumentsByAssignedTo = async (req, res) => {
         .populate("unit", "unitName")
         .sort({ createdAt: -1 })
         .skip((pageNumber - 1) * pageSize)
-        .limit(pageSize);
+        .limit(pageSize)
+        .lean();
   
       const totalDocuments = await Document.countDocuments({ "assignedToUsers.userId": userId });
       const totalPages = Math.ceil(totalDocuments / pageSize);

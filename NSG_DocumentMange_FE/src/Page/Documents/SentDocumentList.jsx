@@ -713,7 +713,7 @@ const SentDocumentList = () => {
     {
       title: "Thao tác",
       key: "action",
-      fixed: "right",
+      className: "action-col", fixed: "right",
       render: (text, record) => {
         const currentUserId = userId;
         if (!currentUserId) return null;
@@ -732,7 +732,7 @@ const SentDocumentList = () => {
                   e.stopPropagation();
                   handleRowClick(record);
                 }}
-                className="w-full rounded-md text-xs"
+                className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center text-xs w-full"
               >
                 <span className="hidden sm:inline text-xs">Xem chi tiết</span>
               </Button>
@@ -747,7 +747,7 @@ const SentDocumentList = () => {
                     e.stopPropagation();
                     handleEdit(record._id);
                   }}
-                  className="w-full rounded-md border-blue-500 text-blue-500 hover:bg-blue-50 text-xs"
+                  className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center border-blue-500 text-blue-500 hover:bg-blue-50 text-xs w-full"
                 >
                   <span className="hidden sm:inline text-xs">Cập nhật</span>
                 </Button>
@@ -773,7 +773,7 @@ const SentDocumentList = () => {
                     danger
                     icon={<DeleteOutlined />}
                     onClick={(e) => e.stopPropagation()}
-                    className="w-full rounded-md text-xs"
+                    className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center text-xs w-full"
                   >
                     <span className="hidden sm:inline text-xs">Xóa</span>
                   </Button>
@@ -783,7 +783,7 @@ const SentDocumentList = () => {
           </div>
         );
       },
-      width: 100,
+      width: 120,
     },
   ];
 
@@ -921,6 +921,7 @@ const SentDocumentList = () => {
           }}
           onChange={handleTableChange}
           scroll={{ x: "max-content" }}
+          sticky={{ offsetScroll: 0, getContainer: () => document.getElementById('main-scroll-container') }}
           className="shadow-md rounded-lg overflow-hidden border border-gray-200"
           rowClassName="cursor-pointer hover:bg-gray-50 transition-colors duration-150"
           onRow={(record) => ({
