@@ -533,7 +533,7 @@ const ReceivedDocumentList = () => {
       width: 60,
     },
     {
-      title: "Số lượng phát hành",
+      title: "SL phát hành",
       dataIndex: "numOfPages",
       key: "numOfPages",
       render: (numOfPages) => numOfPages || "Không có",
@@ -653,7 +653,6 @@ const ReceivedDocumentList = () => {
           </div>
         );
       },
-      width: 300,
     },
     {
       title: "Loại văn bản",
@@ -757,7 +756,7 @@ const ReceivedDocumentList = () => {
     {
       title: "Thao tác",
       key: "action",
-      className: "action-col", fixed: "right",
+      className: "action-col", fixed: "right", align: "center",
       render: (text, record) => {
         const currentUserId = userId;
         if (!currentUserId) return null;
@@ -774,7 +773,7 @@ const ReceivedDocumentList = () => {
         // const isRepliedAndAccepted = record.userAssignment?.status === "received";
 
         return (
-          <div className="flex flex-col gap-2 items-center justify-center">
+          <div className="flex flex-row flex-wrap sm:flex-col gap-2 items-center justify-center">
             <Tooltip title="Xem chi tiết">
               <Button
                 type="primary"
@@ -784,7 +783,7 @@ const ReceivedDocumentList = () => {
                   e.stopPropagation();
                   handleRowClick(record);
                 }}
-                className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center text-xs"
+                className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 sm:!w-[110px] flex items-center justify-center text-xs"
               >
                 <span className="hidden sm:inline text-xs">Xem chi tiết</span>
               </Button>
@@ -799,7 +798,7 @@ const ReceivedDocumentList = () => {
                     e.stopPropagation();
                     handleMarkAsRead(record._id);
                   }}
-                  className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center border-green-500 text-green-500 hover:bg-green-50 text-xs"
+                  className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 sm:!w-[110px] flex items-center justify-center border-green-500 text-green-500 hover:bg-green-50 text-xs"
                 >
                   <span className="hidden sm:inline text-xs">Đã xem</span>
                 </Button>
@@ -815,7 +814,7 @@ const ReceivedDocumentList = () => {
                     e.stopPropagation();
                     handleReply(record);
                   }}
-                  className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center border-blue-500 text-blue-500 hover:bg-blue-50 text-xs"
+                  className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 sm:!w-[110px] flex items-center justify-center border-blue-500 text-blue-500 hover:bg-blue-50 text-xs"
                 >
                   <span className="hidden sm:inline text-xs">Trả lời</span>
                 </Button>
@@ -831,7 +830,7 @@ const ReceivedDocumentList = () => {
                       e.stopPropagation();
                       handleAddToCalendar(record);
                     }}
-                    className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center border-purple-500 text-purple-500 hover:bg-purple-50 text-xs"
+                    className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 sm:!w-[110px] flex items-center justify-center border-purple-500 text-purple-500 hover:bg-purple-50 text-xs"
                   >
                     <span className="hidden sm:inline text-xs">Thêm lịch</span>
                   </Button>
@@ -840,7 +839,7 @@ const ReceivedDocumentList = () => {
           </div>
         );
       },
-      
+      width: window.innerWidth < 640 ? 100 : 130,
     },
   ];
 
@@ -970,7 +969,7 @@ const ReceivedDocumentList = () => {
             showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} tài liệu`,
           }}
           onChange={handleTableChange}
-          scroll={{ x: "max-content" }}
+          scroll={{ x: 1200 }}
           sticky={{ offsetScroll: 0, getContainer: () => document.getElementById('main-scroll-container') }}
           className="shadow-md rounded-lg overflow-hidden border border-gray-200"
           rowClassName="cursor-pointer hover:bg-gray-50 transition-colors duration-150"

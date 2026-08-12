@@ -8,6 +8,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import NotAuthorized from './components/Notauthorized';
 import { NotificationProvider } from './context/NotificationContext.jsx';
 import { FloatButton } from 'antd';
+import { UpOutlined } from '@ant-design/icons';
 
 import Sidebar from './Page/Navbar/Navbar';
 import AppHeader from './Page/Navbar/Header';
@@ -71,15 +72,12 @@ const [isMobile, setIsMobile] = useState(false);
                       onMobileClose={() => setMobileMenuOpen(false)}
                       onMenuItemClick={() => setMobileMenuOpen(false)}
                     />
-                    <div id="main-scroll-container" className="flex-1 p-3 sm:p-6 overflow-y-auto bg-gray-100">
+                    <div id="main-scroll-container" className="flex-1 p-1 sm:p-2 overflow-y-auto bg-gray-100">
                       <Outlet />
                     </div>
                   </div>
                   <ChatbotWidget />
-                  <FloatButton.BackTop 
-                    target={() => document.getElementById('main-scroll-container')} 
-                    style={{ right: 20, bottom: 20 }} 
-                  />
+                  <FloatButton.BackTop target={() => document.getElementById("main-scroll-container") || window} onClick={() => { const el = document.getElementById("main-scroll-container"); if(el) el.scrollTo({ top: 0, behavior: "smooth" }); else window.scrollTo({ top: 0, behavior: "smooth" }); }} icon={<UpOutlined />} type="primary" style={{ right: 24, bottom: 24, zIndex: 9999 }} visibilityHeight={100} />
                 </div>
               </NotificationProvider>
             </PrivateRoute>

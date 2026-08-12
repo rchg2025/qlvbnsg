@@ -533,7 +533,7 @@ const ReportPage = () => {
       width: 60,
     },
     {
-      title: "Số lượng phát hành",
+      title: "SL phát hành",
       dataIndex: "numOfPages",
       key: "numOfPages",
       render: (numOfPages) => numOfPages || "N/A",
@@ -664,7 +664,6 @@ const ReportPage = () => {
           </div>
         );
       },
-      width: 300,
     },
     {
       title: "Loại văn bản",
@@ -732,9 +731,10 @@ const ReportPage = () => {
     {
       title: "Thao tác",
       key: "action",
-      className: "action-col", fixed: "right",
+      className: "action-col", fixed: "right", align: "center",
+      width: window.innerWidth < 640 ? 100 : 130,
       render: (text, record) => (
-        <div className="flex flex-col gap-2 items-center justify-center">
+        <div className="flex flex-row flex-wrap sm:flex-col gap-2 items-center justify-center">
           <Tooltip title="Xem chi tiết">
             <Button
               type="primary"
@@ -744,7 +744,7 @@ const ReportPage = () => {
                 e.stopPropagation();
                 handleRowClick(record);
               }}
-              className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center"
+              className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 sm:!w-[110px] flex items-center justify-center"
             >
               <span className="hidden sm:inline text-xs">Xem chi tiết</span>
             </Button>
@@ -891,7 +891,7 @@ const ReportPage = () => {
             showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} tài liệu`,
           }}
           onChange={handleTableChange}
-          scroll={{ x: "max-content" }}
+          scroll={{ x: 1200 }}
           className="shadow-md rounded-lg overflow-hidden border border-gray-200"
           rowClassName="cursor-pointer hover:bg-gray-50 transition-colors duration-150"
           onRow={(record) => ({

@@ -498,7 +498,7 @@ const SentDocumentList = () => {
       width: 60,
     },
     {
-      title: "Số lượng phát hành",
+      title: "SL phát hành",
       dataIndex: "numOfPages",
       key: "numOfPages",
       render: (numOfPages) => numOfPages || "N/A",
@@ -650,7 +650,6 @@ const SentDocumentList = () => {
           </div>
         );
       },
-      width: 300,
     },
     {
       title: "Loại văn bản",
@@ -713,7 +712,7 @@ const SentDocumentList = () => {
     {
       title: "Thao tác",
       key: "action",
-      className: "action-col", fixed: "right",
+      className: "action-col", fixed: "right", align: "center",
       render: (text, record) => {
         const currentUserId = userId;
         if (!currentUserId) return null;
@@ -722,7 +721,7 @@ const SentDocumentList = () => {
         const canEditDelete = userRole === "admin" || (isSender && userRole !== "staff");
 
         return (
-          <div className="flex flex-col gap-2 items-center justify-center">
+          <div className="flex flex-row flex-wrap sm:flex-col gap-2 items-center justify-center">
             <Tooltip title="Xem chi tiết">
               <Button
                 type="primary"
@@ -732,7 +731,7 @@ const SentDocumentList = () => {
                   e.stopPropagation();
                   handleRowClick(record);
                 }}
-                className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center text-xs"
+                className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 sm:!w-[110px] flex items-center justify-center text-xs"
               >
                 <span className="hidden sm:inline text-xs">Xem chi tiết</span>
               </Button>
@@ -747,7 +746,7 @@ const SentDocumentList = () => {
                     e.stopPropagation();
                     handleEdit(record._id);
                   }}
-                  className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center border-blue-500 text-blue-500 hover:bg-blue-50 text-xs"
+                  className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 sm:!w-[110px] flex items-center justify-center border-blue-500 text-blue-500 hover:bg-blue-50 text-xs"
                 >
                   <span className="hidden sm:inline text-xs">Cập nhật</span>
                 </Button>
@@ -773,7 +772,7 @@ const SentDocumentList = () => {
                     danger
                     icon={<DeleteOutlined />}
                     onClick={(e) => e.stopPropagation()}
-                    className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center text-xs"
+                    className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 sm:!w-[110px] flex items-center justify-center text-xs"
                   >
                     <span className="hidden sm:inline text-xs">Xóa</span>
                   </Button>
@@ -783,7 +782,7 @@ const SentDocumentList = () => {
           </div>
         );
       },
-      
+      width: window.innerWidth < 640 ? 100 : 130,
     },
   ];
 
@@ -920,7 +919,7 @@ const SentDocumentList = () => {
             showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} tài liệu`,
           }}
           onChange={handleTableChange}
-          scroll={{ x: "max-content" }}
+          scroll={{ x: 1200 }}
           sticky={{ offsetScroll: 0, getContainer: () => document.getElementById('main-scroll-container') }}
           className="shadow-md rounded-lg overflow-hidden border border-gray-200"
           rowClassName="cursor-pointer hover:bg-gray-50 transition-colors duration-150"

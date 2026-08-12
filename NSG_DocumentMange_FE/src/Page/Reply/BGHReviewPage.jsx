@@ -647,7 +647,6 @@ const BGHReviewPage = () => {
         dataIndex: "shortDescription",
         key: "shortDescription",
         ellipsis: true,
-        width: 200,
         render: (text) => {
           if (!text) return "Không có";
           return text.length > 50 ? `${text.substring(0, 50)}...` : text;
@@ -729,7 +728,7 @@ const BGHReviewPage = () => {
             return <span className="text-gray-400">Không có</span>;
           }
           return (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-row flex-wrap sm:flex-col gap-2">
               {record.files.slice(0, 2).map((file, index) => {
                 const rawName = file.fileName || file.name || "File";
                 return (
@@ -763,9 +762,10 @@ const BGHReviewPage = () => {
       {
         title: "Thao tác",
         key: "action",
-      className: "action-col", fixed: "right",
+      className: "action-col", fixed: "right", align: "center",
+      width: window.innerWidth < 640 ? 100 : 130,
         render: (text, record) => (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-row flex-wrap sm:flex-col gap-2">
             <Tooltip title="Xem chi tiết">
               <Button
                 size="small"
@@ -775,7 +775,7 @@ const BGHReviewPage = () => {
                   e.stopPropagation();
                   handleViewDetail(record);
                 }}
-                className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center text-xs"
+                className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 sm:!w-[110px] flex items-center justify-center text-xs"
               >
                 <span className="hidden sm:inline text-xs">Xem chi tiết</span>
               </Button>
@@ -786,7 +786,7 @@ const BGHReviewPage = () => {
                   <Button
                     size="small"
                     icon={<CheckOutlined />}
-                    className="bg-green-500 hover:bg-green-600 text-white border-green-500 rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center text-xs"
+                    className="bg-green-500 hover:bg-green-600 text-white border-green-500 rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 sm:!w-[110px] flex items-center justify-center text-xs"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleOpenApproveModal(record._id);
@@ -801,7 +801,7 @@ const BGHReviewPage = () => {
                     size="small"
                     danger
                     icon={<CloseOutlined />}
-                    className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center text-xs"
+                    className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 sm:!w-[110px] flex items-center justify-center text-xs"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleOpenRejectModal(record._id);
@@ -818,7 +818,7 @@ const BGHReviewPage = () => {
                   size="small"
                   type="default"
                   icon={<FileDoneOutlined />}
-                  className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center text-xs border-blue-500 text-blue-500 hover:bg-blue-50"
+                  className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 sm:!w-[110px] flex items-center justify-center text-xs border-blue-500 text-blue-500 hover:bg-blue-50"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleIssueDocument(record);
@@ -960,7 +960,7 @@ const BGHReviewPage = () => {
             showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} văn bản`,
           }}
           onChange={handleTableChange}
-          scroll={{ x: "max-content" }}
+          scroll={{ x: 1200 }}
           className="shadow-md rounded-lg overflow-hidden border border-gray-200"
           rowClassName="cursor-pointer hover:bg-gray-50 transition-colors duration-150"
           onRow={(record) => ({

@@ -352,7 +352,7 @@ const SchedulePage = () => {
 
     const tableColumns = [
         { title: 'STT', key: 'stt', render: (text, record, index) => index + 1, width: 60 },
-        { title: 'Tiêu đề', dataIndex: 'title', key: 'title', render: text => <b>{text}</b> },
+        { title: 'Tiêu đề', dataIndex: 'title', key: 'title', render: text => <div className="whitespace-normal break-words min-w-[150px] max-w-[300px]"><b>{text}</b></div> },
         { 
             title: 'Người thực hiện', 
             key: 'assignees', 
@@ -409,21 +409,21 @@ const SchedulePage = () => {
         {
               title: 'Thao tác',
               key: 'action',
-              className: "action-col", fixed: "right",
+              className: "action-col", fixed: "right", align: "center",
               render: (_, record) => (
-                  <div className="flex flex-col gap-2 justify-center" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex flex-row flex-wrap sm:flex-col gap-2 justify-center" onClick={(e) => e.stopPropagation()}>
                       <Tooltip title="Xem chi tiết">
-                          <Button type="primary" size="small" icon={<EyeOutlined />} onClick={(e) => { e.stopPropagation(); handleViewDetails(record); }} className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center sm:w-28 sm:justify-start text-xs">
+                          <Button type="primary" size="small" icon={<EyeOutlined />} onClick={(e) => { e.stopPropagation(); handleViewDetails(record); }} className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 sm:!w-[110px] flex items-center justify-center  text-xs">
                               <span className="hidden sm:inline text-xs">Xem chi tiết</span>
                           </Button>
                       </Tooltip>
                       <Tooltip title="Cập nhật">
-                          <Button type="default" size="small" icon={<EditOutlined />} onClick={(e) => { e.stopPropagation(); handleSelectEvent({ resource: record }); }} className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center sm:w-28 sm:justify-start border-orange-500 text-orange-500 hover:bg-orange-50 text-xs">
+                          <Button type="default" size="small" icon={<EditOutlined />} onClick={(e) => { e.stopPropagation(); handleSelectEvent({ resource: record }); }} className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 sm:!w-[110px] flex items-center justify-center  border-orange-500 text-orange-500 hover:bg-orange-50 text-xs">
                               <span className="hidden sm:inline text-xs">Cập nhật</span>
                           </Button>
                       </Tooltip>
                       <Tooltip title="Lịch sử">
-                          <Button type="default" size="small" icon={<HistoryOutlined />} onClick={(e) => { e.stopPropagation(); handleViewHistory(record); }} className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center sm:w-28 sm:justify-start text-gray-500 border-gray-500 hover:bg-gray-50 text-xs">
+                          <Button type="default" size="small" icon={<HistoryOutlined />} onClick={(e) => { e.stopPropagation(); handleViewHistory(record); }} className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 sm:!w-[110px] flex items-center justify-center  text-gray-500 border-gray-500 hover:bg-gray-50 text-xs">
                               <span className="hidden sm:inline text-xs">Lịch sử</span>
                           </Button>
                       </Tooltip>
@@ -797,10 +797,10 @@ const SchedulePage = () => {
                 width={800}
                 onCancel={() => setIsModalVisible(false)}
                 footer={[
-                    editingTask && <Button key="delete" danger onClick={handleDelete} disabled={isSaving}>Xóa</Button>,
+                    (editingTask && currentUser && (editingTask.createdBy?._id === currentUser._id || editingTask.createdBy === currentUser._id)) && <Button key="delete" danger onClick={handleDelete} disabled={isSaving}>Xóa</Button>,
                     <Button key="cancel" onClick={() => setIsModalVisible(false)} disabled={isSaving}>Hủy</Button>,
                     <Button key="submit" type="primary" onClick={handleOk} loading={isSaving}>{isSaving ? "Đang lưu..." : "Lưu"}</Button>
-                ]}
+                ].filter(Boolean)}
             >
                 <Form form={form} layout="vertical">
                     <Row gutter={[16, 16]}>
@@ -898,7 +898,7 @@ const SchedulePage = () => {
                 {editingTask && editingTask.files && editingTask.files.length > 0 && (
                     <div style={{ marginTop: 15 }}>
                         <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: 600 }}>Tệp đính kèm mới nhất:</h4>
-                        <div className="flex flex-col gap-2">
+                        <div className="flex flex-row flex-wrap sm:flex-col gap-2">
                             {editingTask.files.map((file, index) => (
                                 <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded border hover:bg-gray-100 transition-colors">
                                     <FileTextOutlined className="text-blue-500 text-lg" />
@@ -913,7 +913,7 @@ const SchedulePage = () => {
                 {editingTask && editingTask.relatedDocument && editingTask.relatedDocument.files && editingTask.relatedDocument.files.length > 0 && (
                     <div style={{ marginTop: 15 }}>
                         <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: 600 }}>Tệp từ văn bản liên quan:</h4>
-                        <div className="flex flex-col gap-2">
+                        <div className="flex flex-row flex-wrap sm:flex-col gap-2">
                             {editingTask.relatedDocument.files.map((file, index) => (
                                 <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded border hover:bg-gray-100 transition-colors">
                                     <FileTextOutlined className="text-blue-500 text-lg" />
@@ -972,7 +972,7 @@ const SchedulePage = () => {
                                                 <span className="truncate" title={file.fileName}>{file.fileName}</span>
                                             </div>
                                             <Space className="flex-shrink-0">
-                                                <Button size="small" type="primary" ghost icon={<EyeOutlined />} onClick={() => window.open(`https://drive.google.com/file/d/${file.fileId}/view`, '_blank')} title="Xem file">Xem</Button>
+                                                <Button size="small" type="primary" ghost icon={<EyeOutlined />} onClick={() => window.open(`https://drive.google.com/file/d/${file.fileId}/view`, '_blank')} title="Xem file"><span className="hidden sm:inline">Xem</span></Button>
                                                 <Button size="small" icon={<ExportOutlined />} onClick={() => {
                                                     const link = document.createElement('a');
                                                     link.href = `https://drive.google.com/uc?export=download&id=${file.fileId}`;
@@ -980,7 +980,7 @@ const SchedulePage = () => {
                                                     document.body.appendChild(link);
                                                     link.click();
                                                     document.body.removeChild(link);
-                                                }} title="Tải xuống">Tải xuống</Button>
+                                                }} title="Tải xuống"><span className="hidden sm:inline">Tải xuống</span></Button>
                                             </Space>
                                         </div>
                                     ))}

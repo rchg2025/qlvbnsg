@@ -550,7 +550,6 @@ const RepliedDocList = () => {
         dataIndex: "shortDescription",
         key: "shortDescription",
         ellipsis: true,
-        width: 200,
         render: (text) => {
           if (!text) return "Không có";
           return text.length > 50 ? `${text.substring(0, 50)}...` : text;
@@ -651,16 +650,17 @@ const RepliedDocList = () => {
       {
         title: "Thao tác",
         key: "action",
-      className: "action-col", fixed: "right",
+      className: "action-col", fixed: "right", align: "center",
+      width: window.innerWidth < 640 ? 100 : 130,
         render: (text, record) => (
-          <div className="flex flex-col gap-2 items-center justify-center">
+          <div className="flex flex-row flex-wrap sm:flex-col gap-2 items-center justify-center">
             <Tooltip title="Xem chi tiết">
               <Button
                 size="small"
                 type="primary"
                 icon={<EyeOutlined />}
                 onClick={() => handleViewDetail(record)}
-                className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center text-xs"
+                className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 sm:!w-[110px] flex items-center justify-center text-xs"
               >
                 <span className="hidden sm:inline text-xs">Xem chi tiết</span>
               </Button>
@@ -671,7 +671,7 @@ const RepliedDocList = () => {
                   <Button
                     size="small"
                     icon={<EditOutlined />}
-                    className="bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500 rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center text-xs"
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500 rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 sm:!w-[110px] flex items-center justify-center text-xs"
                     onClick={(e) => {
                       e.stopPropagation();
                       navigate(`/repliedDocs/edit/${record._id}`);
@@ -685,7 +685,7 @@ const RepliedDocList = () => {
                     size="small"
                     danger
                     icon={<DeleteOutlined />}
-                    className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center text-xs"
+                    className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 sm:!w-[110px] flex items-center justify-center text-xs"
                     onClick={(e) => handleOpenDeleteModal(e, record._id)}
                   >
                     <span className="hidden sm:inline text-xs">Xóa</span>
@@ -699,7 +699,7 @@ const RepliedDocList = () => {
                   <Button
                     size="small"
                     icon={<CheckOutlined />}
-                    className="bg-green-500 hover:bg-green-600 text-white border-green-500 rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center text-xs"
+                    className="bg-green-500 hover:bg-green-600 text-white border-green-500 rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 sm:!w-[110px] flex items-center justify-center text-xs"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleApprove(record._id);
@@ -714,7 +714,7 @@ const RepliedDocList = () => {
                     size="small"
                     danger
                     icon={<CloseOutlined />}
-                    className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center text-xs"
+                    className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 sm:!w-[110px] flex items-center justify-center text-xs"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleOpenRejectModal(record._id);
@@ -731,7 +731,7 @@ const RepliedDocList = () => {
                   size="small"
                   type="primary"
                   icon={<SendOutlined />}
-                  className="bg-amber-400 hover:bg-amber-500 text-white border-amber-400 rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center text-xs"
+                  className="bg-amber-400 hover:bg-amber-500 text-white border-amber-400 rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 sm:!w-[110px] flex items-center justify-center text-xs"
                   onClick={(e) => handleOpenReviewerModal(e, record._id)}
                 >
                   <span className="hidden sm:inline text-xs">Gửi duyệt</span>
@@ -744,7 +744,7 @@ const RepliedDocList = () => {
                   size="small"
                   type="default"
                   icon={<FileDoneOutlined />}
-                  className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 flex items-center justify-center text-xs border-blue-500 text-blue-500 hover:bg-blue-50 mt-1"
+                  className="rounded-md max-sm:!w-8 max-sm:!h-8 max-sm:!p-0 sm:!w-[110px] flex items-center justify-center text-xs border-blue-500 text-blue-500 hover:bg-blue-50 mt-1"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleIssueDocument(record);
@@ -991,7 +991,7 @@ const RepliedDocList = () => {
             showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} văn bản (tối đa 50 văn bản mới nhất)`,
           }}
           onChange={handleTableChange}
-          scroll={{ x: "max-content" }}
+          scroll={{ x: 1200 }}
           className="shadow-md rounded-lg overflow-hidden border border-gray-200"
           rowClassName="cursor-pointer hover:bg-gray-50 transition-colors duration-150"
           onRow={(record) => ({
