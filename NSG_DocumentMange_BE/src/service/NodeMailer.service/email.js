@@ -90,9 +90,12 @@ const sendNewDocumentEmail = async (uniqueUsers, docData, senderName = "Hệ th�
     }
 }
 
-const sendTaskReminderEmail = async (email, taskData, reminderType) => {
+const sendTaskReminderEmail = async (emails, taskData, reminderType) => {
     try {
-        if (!email) return;
+        if (!emails || emails.length === 0) return;
+        const bccList = Array.isArray(emails) ? emails : [emails];
+        if (bccList.length === 0) return;
+
         const transporter = createTransporter();
         
         let subject = "";
@@ -131,7 +134,8 @@ const sendTaskReminderEmail = async (email, taskData, reminderType) => {
 
         const mailOptions = {
             from: '"Hệ thống quản lý văn bản NSG" <qlvb@nsgpc.edu.vn>',
-            to: email, 
+            to: '"Hệ thống quản lý văn bản NSG" <qlvb@nsgpc.edu.vn>',
+            bcc: bccList.join(','),
             subject: subject,
             html: htmlContent,
         }
