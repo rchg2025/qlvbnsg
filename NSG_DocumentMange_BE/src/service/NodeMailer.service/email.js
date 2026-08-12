@@ -34,6 +34,30 @@ const sentTempPassword = async (email,tempPass) => {
     }
 }
 
+const sendRestoreOtpEmail = async (email, otp) => {
+    try {
+        const transporter = createTransporter();
+        const mailOptions = {
+            from: '"Hệ thống quản lý văn bản NSG" <qlvb@nsgpc.edu.vn>',
+            to: email,
+            subject: "Mã xác nhận Khôi phục Cơ sở dữ liệu",
+            text: `Mã xác nhận của bạn là: ${otp}. Mã có hiệu lực trong 10 phút.`,
+            html: `
+                <div style="font-family: Arial, sans-serif; padding: 20px;">
+                    <h2>Cảnh báo Bảo mật</h2>
+                    <p>Bạn vừa yêu cầu khôi phục toàn bộ Cơ sở dữ liệu của hệ thống.</p>
+                    <p>Mã xác nhận (OTP) của bạn là: <strong>${otp}</strong></p>
+                    <p style="color: red;">Mã có hiệu lực trong 10 phút. <strong>LƯU Ý:</strong> Việc khôi phục sẽ ghi đè toàn bộ dữ liệu hiện tại.</p>
+                </div>
+            `,
+        }
+        await transporter.sendMail(mailOptions);
+        return true;
+    } catch (error) {
+        console.error("Error sending restore OTP to email:", error);
+    }
+}
+
 const sendNewDocumentEmail = async (uniqueUsers, docData, senderName = "Hệ thống") => {
     try {
         if (!uniqueUsers || uniqueUsers.length === 0) return;
@@ -239,7 +263,7 @@ const sendTaskNotificationEmail = async (uniqueUsers, taskData, actionType) => {
     }
 }
 
-const sendReviewNotificationEmail = async (uniqueUsers, docData, actionType, notes = "") => {
+const sendReviewNotificationEmail = async (uniqueUsers, docData, actionType, notes = "", actorName = "") => {
     try {
         if (!uniqueUsers || uniqueUsers.length === 0) return;
         const bccList = uniqueUsers.map(u => u.email).filter(e => !!e);
@@ -254,25 +278,25 @@ const sendReviewNotificationEmail = async (uniqueUsers, docData, actionType, not
         let headerBorderColor = "#2196F3";
 
         if (actionType === 'submitToBGH') {
-            actionName = "Yêu cầu BGH xét duyệt";
+            actionName = actorName ? `${actorName} yêu cầu BGH xét duyệt` : "Yêu cầu BGH xét duyệt";
             statusLabel = '<span style="color: #ff9800; font-weight: bold;">Chờ BGH duyệt</span>';
             headerColorStart = "#ff9800";
             headerColorEnd = "#ffb74d";
             headerBorderColor = "#ff9800";
         } else if (actionType === 'bghReject') {
-            actionName = "BGH từ chối phê duyệt";
+            actionName = actorName ? `${actorName} từ chối phê duyệt` : "BGH từ chối phê duyệt";
             statusLabel = '<span style="color: #f44336; font-weight: bold;">BGH Từ chối</span>';
             headerColorStart = "#f44336";
             headerColorEnd = "#ef5350";
             headerBorderColor = "#f44336";
         } else if (actionType === 'managerAccept') {
-            actionName = "Manager đã chấp nhận";
-            statusLabel = '<span style="color: #4CAF50; font-weight: bold;">Đã chấp nhận</span>';
+            actionName = actorName ? `${actorName} đã xác nhận` : "Manager đã xác nhận";
+            statusLabel = '<span style="color: #4CAF50; font-weight: bold;">Đã xác nhận</span>';
             headerColorStart = "#4CAF50";
             headerColorEnd = "#66bb6a";
             headerBorderColor = "#4CAF50";
         } else if (actionType === 'managerReject') {
-            actionName = "Manager từ chối phê duyệt";
+            actionName = actorName ? `${actorName} từ chối phê duyệt` : "Manager từ chối phê duyệt";
             statusLabel = '<span style="color: #f44336; font-weight: bold;">Từ chối</span>';
             headerColorStart = "#f44336";
             headerColorEnd = "#ef5350";
@@ -289,13 +313,16 @@ const sendReviewNotificationEmail = async (uniqueUsers, docData, actionType, not
         }
 
         const fullDocCode = docData.repliedDoc ? 
-            ((docData.repliedDoc.docNum && docData.repliedDoc.docCode) ? \`\${docData.repliedDoc.docNum}/\${docData.repliedDoc.docCode}\` : "N/A") 
+            ((docData.repliedDoc.docNum && docData.repliedDoc.docCode) ? `${docData.repliedDoc.docNum}/${docData.repliedDoc.docCode}` : "N/A") 
             : "N/A";
             
         const docTitle = docData.shortDescription || "Không có";
         const docType = docData.docVariant ? (docData.docVariant.docVariantName || "N/A") : "N/A";
-        const drafter = docData.repliedDoc ? (docData.repliedDoc.author || "N/A") : "N/A";
         const submitter = docData.replyBy ? (docData.replyBy.name || "N/A") : "N/A";
+        let drafter = submitter; // Normally, drafter and submitter are the same
+        if (docData.repliedDoc && docData.repliedDoc.sentBy && docData.repliedDoc.sentBy.name) {
+            drafter = docData.repliedDoc.sentBy.name;
+        }
 
         let htmlContent = REVIEW_NOTIFICATION_EMAIL_TEMPLATE
             .replace(/{actionName}/g, actionName)
@@ -311,7 +338,7 @@ const sendReviewNotificationEmail = async (uniqueUsers, docData, actionType, not
             .replace(/{headerColorEnd}/g, headerColorEnd)
             .replace(/{headerBorderColor}/g, headerBorderColor);
 
-        const subject = \`[\${actionName}] \${docTitle}\`;
+        const subject = `[${actionName}] ${docTitle}`;
 
         const mailOptions = {
             from: '"Hệ thống quản lý văn bản NSG" <qlvb@nsgpc.edu.vn>',
@@ -320,7 +347,7 @@ const sendReviewNotificationEmail = async (uniqueUsers, docData, actionType, not
             subject: subject,
             html: htmlContent,
         }
-        await transporter.sendMail(mailOptions).catch(err => console.error(\`Error sending email:\`, err));
+        await transporter.sendMail(mailOptions).catch(err => console.error(`Error sending email:`, err));
         return true;
     } catch (error) {
         console.error("Error sending review notification to email:", error);
@@ -329,6 +356,7 @@ const sendReviewNotificationEmail = async (uniqueUsers, docData, actionType, not
 
 module.exports = {
     sentTempPassword,
+    sendRestoreOtpEmail,
     sendNewDocumentEmail,
     sendTaskReminderEmail,
     sendTaskNotificationEmail,

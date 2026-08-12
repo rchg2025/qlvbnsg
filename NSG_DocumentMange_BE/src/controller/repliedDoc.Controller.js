@@ -290,10 +290,21 @@ const updateReplyDocStatus = async (req, res) => {
             select: 'docCode docNum shortDescription',
             populate: { path: 'sentBy', select: 'name email' }
           });
-        if (fullDoc && fullDoc.repliedDoc && fullDoc.repliedDoc.sentBy) {
+        if (fullDoc) {
           const actionType = newStatus === 'approved' ? 'managerAccept' : 'managerReject';
           const notes = req.body.rejectionReason || "Không có";
-          await sendReviewNotificationEmail([fullDoc.repliedDoc.sentBy], fullDoc, actionType, notes);
+          const actorName = req.user ? req.user.name : "Manager";
+          
+          const recipients = [];
+          if (fullDoc.replyBy) recipients.push(fullDoc.replyBy);
+          // Gửi thêm cho người tạo văn bản gốc nếu muốn, nhưng chủ yếu là gửi cho người trình ký (replyBy)
+          if (fullDoc.repliedDoc && fullDoc.repliedDoc.sentBy && fullDoc.repliedDoc.sentBy._id.toString() !== fullDoc.replyBy?._id.toString()) {
+             recipients.push(fullDoc.repliedDoc.sentBy);
+          }
+
+          if (recipients.length > 0) {
+            await sendReviewNotificationEmail(recipients, fullDoc, actionType, notes, actorName);
+          }
         }
       } catch (err) {
         console.error("Error sending email on updateReplyDocStatus:", err);
@@ -861,7 +872,8 @@ const sentToReview = async (req, res) => {
           populate: { path: 'sentBy', select: 'name email' } 
         });
       if (fullDoc && fullDoc.reviewer) {
-        await sendReviewNotificationEmail([fullDoc.reviewer], fullDoc, 'submitToBGH', '');
+        const actorName = req.user ? req.user.name : "";
+        await sendReviewNotificationEmail([fullDoc.reviewer], fullDoc, 'submitToBGH', '', actorName);
       }
     } catch (err) {
       console.error("Error sending email on sentToReview:", err);
@@ -1004,7 +1016,8 @@ const reviewerAction = async (req, res) => {
           if (fullDoc.replyBy) recipients.push(fullDoc.replyBy);
           if (fullDoc.repliedDoc && fullDoc.repliedDoc.sentBy) recipients.push(fullDoc.repliedDoc.sentBy);
           if (recipients.length > 0) {
-            await sendReviewNotificationEmail(recipients, fullDoc, 'bghReject', reviewerNotes);
+            const actorName = req.user ? req.user.name : "BGH";
+            await sendReviewNotificationEmail(recipients, fullDoc, 'bghReject', reviewerNotes, actorName);
           }
         }
       } catch (err) {

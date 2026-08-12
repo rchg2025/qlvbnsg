@@ -36,10 +36,12 @@ import Statistics from './Page/Statistics/statistics.jsx';
 import SchedulePage from './Page/Schedule/SchedulePage.jsx';
 import ChatbotConfig from './Page/Chatbot/ChatbotConfig.jsx';
 import ChatbotWidget from './components/ChatbotWidget/ChatbotWidget.jsx';
+import BackupConfig from './Page/BackupConfig/BackupConfig.jsx';
 
 function App() {
 const [isMobile, setIsMobile] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
 
   useEffect(() => {
@@ -50,6 +52,7 @@ const [isMobile, setIsMobile] = useState(false);
     };
   
     checkMobile();
+    setIsMounted(true);
   }, []);
 
   return (
@@ -66,7 +69,7 @@ const [isMobile, setIsMobile] = useState(false);
                   <AppHeader 
                     onMenuClick={() => setMobileMenuOpen(true)}
                   />
-                  <div className="flex flex-1">
+                  <div className="flex flex-1 overflow-hidden">
                     <Sidebar 
                       mobileOpen={mobileMenuOpen}
                       onMobileClose={() => setMobileMenuOpen(false)}
@@ -77,7 +80,15 @@ const [isMobile, setIsMobile] = useState(false);
                     </div>
                   </div>
                   <ChatbotWidget />
-                  <FloatButton.BackTop target={() => document.getElementById("main-scroll-container") || window} onClick={() => { const el = document.getElementById("main-scroll-container"); if(el) el.scrollTo({ top: 0, behavior: "smooth" }); else window.scrollTo({ top: 0, behavior: "smooth" }); }} icon={<UpOutlined />} type="primary" style={{ right: 24, bottom: 24, zIndex: 9999 }} visibilityHeight={100} />
+                  {isMounted && (
+                    <FloatButton.BackTop 
+                      target={() => document.getElementById("main-scroll-container")}
+                      icon={<UpOutlined />} 
+                      type="primary" 
+                      style={{ right: 24, bottom: 24, zIndex: 9999 }} 
+                      visibilityHeight={100} 
+                    />
+                  )}
                 </div>
               </NotificationProvider>
             </PrivateRoute>
@@ -111,6 +122,7 @@ const [isMobile, setIsMobile] = useState(false);
             <Route path="Units" element={<UnitList />} />
             <Route path="Statistics" element={<Statistics />} />
             <Route path="ChatbotConfig" element={<ChatbotConfig />} />
+            <Route path="BackupConfig" element={<BackupConfig />} />
           </Route>
         </Route>
       </Routes>
